@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"cloud.google.com/go/pubsub"
-	ps "github.com/lileio/lile/pubsub"
+	ps "github.com/lileio/pubsub"
 	ctxNet "golang.org/x/net/context"
 
 	"github.com/golang/protobuf/proto"
