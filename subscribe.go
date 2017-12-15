@@ -71,7 +71,7 @@ func (c Client) On(topic, subscriberName string, f Handler, deadline time.Durati
 		return
 	}
 
-	cb := func(c context.Context, m Msg) error {
+	cb := func(ctx context.Context, m Msg) error {
 		var oV []reflect.Value
 
 		var obj reflect.Value
@@ -94,9 +94,9 @@ func (c Client) On(topic, subscriberName string, f Handler, deadline time.Durati
 		case 1:
 			oV = []reflect.Value{obj}
 		case 2:
-			oV = []reflect.Value{reflect.ValueOf(c), obj}
+			oV = []reflect.Value{reflect.ValueOf(ctx), obj}
 		case 3:
-			oV = []reflect.Value{reflect.ValueOf(c), reflect.ValueOf(m.Metadata), obj}
+			oV = []reflect.Value{reflect.ValueOf(ctx), reflect.ValueOf(m.Metadata), obj}
 		}
 
 		returnVal := handler.Call(oV)
@@ -106,8 +106,8 @@ func (c Client) On(topic, subscriberName string, f Handler, deadline time.Durati
 
 		errInterface := returnVal[0].Interface()
 
-		pubsubHandled.WithLabelValues(topic, subscriberName, strconv.FormatBool(errInterface == nil)).Inc()
-		subscriberSize.WithLabelValues(topic, subscriberName).Add(float64(len(m.Data)))
+		pubsubHandled.WithLabelValues(topic, c.ServiceName, strconv.FormatBool(errInterface == nil)).Inc()
+		subscriberSize.WithLabelValues(topic, c.ServiceName).Add(float64(len(m.Data)))
 		if errInterface == nil {
 			return nil
 		}
