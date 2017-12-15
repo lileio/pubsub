@@ -62,9 +62,7 @@ func (g *GoogleCloud) Publish(ctx context.Context, topic string, msg proto.Messa
 	}
 
 	clientSpan.LogEvent("get topic")
-	mutex.Lock()
 	t, err := g.getTopic(topic)
-	mutex.Unlock()
 	clientSpan.LogEvent("topic received")
 	if err != nil {
 		return err
@@ -102,7 +100,14 @@ func (g *GoogleCloud) subscribe(topic, subscriberName string, h ps.MsgHandler, d
 
 		// Subscribe with backoff for failure (i.e topic doesn't exist yet)
 		for {
-			t := g.client.Topic(topic)
+			t, err := g.getTopic(topic)
+			if err != nil {
+				d := b.Duration()
+				logrus.Errorf("Can't get to topic: %s. Trying again in %s", err.Error(), d)
+				time.Sleep(d)
+				continue
+			}
+
 			subName := subscriberName + "--" + topic
 			sc := pubsub.SubscriptionConfig{
 				Topic:       t,
@@ -187,6 +192,9 @@ func (c consumerOption) Apply(o *opentracing.StartSpanOptions) {
 }
 
 func (g *GoogleCloud) getTopic(name string) (*pubsub.Topic, error) {
+	mutex.Lock()
+	defer mutex.Unlock()
+
 	if g.topics[name] != nil {
 		return g.topics[name], nil
 	}

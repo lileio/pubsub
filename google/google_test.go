@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/lileio/lile/pubsub"
 	"github.com/lileio/lile/test"
+	"github.com/lileio/pubsub"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/log"
 	zipkintracer "github.com/openzipkin/zipkin-go-opentracing"
@@ -27,13 +27,13 @@ func TestGooglePublishSubscribe(t *testing.T) {
 
 	}
 
-	if os.Getenv("GOOGLE_PUBSUB_PROJECT_ID") == "" {
-		assert.Fail(t, "No GOOGLE_PUBSUB_PROJECT_ID is set")
+	if os.Getenv("GCLOUD_PROJECT") == "" {
+		assert.Fail(t, "No GCLOUD_PROJECT is set")
 		return
 	}
 
 	sub := "lile_" + uuid.NewV1().String()
-	ps, err := NewGoogleCloud(os.Getenv("GOOGLE_PUBSUB_PROJECT_ID"))
+	ps, err := NewGoogleCloud(os.Getenv("GCLOUD_PROJECT"))
 	assert.Nil(t, err)
 	assert.NotNil(t, ps)
 
