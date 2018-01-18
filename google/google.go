@@ -137,18 +137,15 @@ func (g *GoogleCloud) subscribe(topic, subscriberName string, h ps.MsgHandler, d
 				spanContext, err := tracer.Extract(
 					opentracing.TextMap,
 					opentracing.TextMapCarrier(m.Attributes))
-				if err != nil {
-					logrus.Error(err)
-					return
+				if err == nil {
+					handlerSpan := tracer.StartSpan(
+						subscriberName,
+						consumerOption{clientContext: spanContext},
+						pubsubTag,
+					)
+					defer handlerSpan.Finish()
+					ctx = opentracing.ContextWithSpan(ctx, handlerSpan)
 				}
-
-				handlerSpan := tracer.StartSpan(
-					subscriberName,
-					consumerOption{clientContext: spanContext},
-					pubsubTag,
-				)
-				defer handlerSpan.Finish()
-				ctx = opentracing.ContextWithSpan(ctx, handlerSpan)
 
 				msg := ps.Msg{
 					ID:       m.ID,
