@@ -1,3 +1,4 @@
+//Package pubsub implements publish subscriber patterns for usage in Golang
 //go:generate mockgen -source pubsub.go -destination pubsub_mock.go -package pubsub
 package pubsub
 
@@ -8,8 +9,6 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/prometheus/client_golang/prometheus"
 )
-
-var client = &Client{Provider: NoopProvider{}}
 
 var (
 	publishedCounter = prometheus.NewCounterVec(
@@ -23,11 +22,20 @@ var (
 			Name: "pubsub_outgoing_bytes",
 			Help: "A counter of pubsub published outgoing bytes.",
 		}, []string{"topic", "service"})
+
+	publishDurationsHistogram = prometheus.NewHistogram(prometheus.HistogramOpts{
+		Name:    "pubsub_publish_durations_histogram_seconds",
+		Help:    "PubSub publishing latency distributions.",
+		Buckets: prometheus.DefBuckets,
+	})
+
+	client = &Client{Provider: NoopProvider{}}
 )
 
 func init() {
 	prometheus.MustRegister(publishedCounter)
 	prometheus.MustRegister(publishedSize)
+	prometheus.MustRegister(publishDurationsHistogram)
 }
 
 // Client holds a reference to a Provider
@@ -36,29 +44,10 @@ type Client struct {
 	Provider    Provider
 }
 
-func SetClient(c *Client) {
-	client = c
-}
-
-func GlobalClient() *Client {
-	return client
-}
-
 // Provider is generic interface for a pub sub provider
 type Provider interface {
 	Publish(ctx context.Context, topic string, msg proto.Message) error
 	Subscribe(topic, subscriberName string, h MsgHandler, deadline time.Duration, autoAck bool)
-}
-
-func Publish(ctx context.Context, topic string, msg proto.Message) error {
-	err := client.Provider.Publish(ctx, topic, msg)
-	if err != nil {
-		return err
-	}
-
-	publishedCounter.WithLabelValues(topic, client.ServiceName).Inc()
-	publishedSize.WithLabelValues(topic, client.ServiceName).Add(float64(len([]byte(msg.String()))))
-	return nil
 }
 
 // Subscriber is a service/service that listens to events and registers handlers
@@ -79,37 +68,44 @@ type Msg struct {
 	Nack func()
 }
 
-// Handler is a specific callback used for Subscribe. It is generalized to
-// an interface{}, but we will discover its format and arguments at runtime
-// and perform the correct callback, including de-marshalling of protobuf.
-//
-// Handlers are expected to have one of four signatures.
-//
-//	type person struct {
-//		Name string
-//		Age  uint
-//	}
-//
-//	handler := func(ctx context.Context, m *pubsub.Msg)
-//	handler := func(p *person)
-//	handler := func(ctx context.Context, p *person)
-//	handler := func(ctx context.Context, metadata map[string]string, p *person)
-//
-// These forms allow a callback to request a raw Msg where the processing
-// is untouched or to have the library perform some de-marshalling.
-// It is highly recommended to use context when you call external services so
-// that tracing can be kept even for async actions
+// Handler is a specific callback used for Subscribe in the format of..
+// func(ctx context.Context, obj proto.Message, msg *Msg) error
+// for example, you can unmarshal a custom type..
+// func(ctx context.Context, accounts accounts.Account, msg *Msg) error
 type Handler interface{}
 
 // MsgHandler is the internal or raw message handler
-type MsgHandler func(c context.Context, m Msg) error
+type MsgHandler func(ctx context.Context, m Msg) error
 
-type NoopProvider struct{}
+// SetClient sets the global pubsub client, useful in tests
+func SetClient(cli *Client) {
+	client = cli
+}
 
-func (np NoopProvider) Publish(ctx context.Context, topic string, msg proto.Message) error {
+// Publish published on the client
+func (c *Client) Publish(ctx context.Context, topic string, msg proto.Message) error {
+	start := time.Now()
+	err := c.Provider.Publish(ctx, topic, msg)
+	if err != nil {
+		return err
+	}
+
+	publishedCounter.WithLabelValues(topic, client.ServiceName).Inc()
+	publishedSize.WithLabelValues(topic, client.ServiceName).Add(float64(len([]byte(msg.String()))))
+	publishDurationsHistogram.Observe(time.Now().Sub(start).Seconds())
 	return nil
 }
 
-func (np NoopProvider) Subscribe(topic, subscriberName string, h MsgHandler, deadline time.Duration, autoAck bool) {
-	return
+// Publish is a convenience message which publishes to the current (global) publisher
+func Publish(ctx context.Context, topic string, msg proto.Message) error {
+	start := time.Now()
+	err := client.Provider.Publish(ctx, topic, msg)
+	if err != nil {
+		return err
+	}
+
+	publishedCounter.WithLabelValues(topic, client.ServiceName).Inc()
+	publishedSize.WithLabelValues(topic, client.ServiceName).Add(float64(len([]byte(msg.String()))))
+	publishDurationsHistogram.Observe(time.Now().Sub(start).Seconds())
+	return nil
 }
