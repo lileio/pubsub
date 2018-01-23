@@ -46,7 +46,7 @@ type Client struct {
 
 // Provider is generic interface for a pub sub provider
 type Provider interface {
-	Publish(ctx context.Context, topic string, msg proto.Message) error
+	Publish(ctx context.Context, topic string, msg interface{}, json bool) error
 	Subscribe(topic, subscriberName string, h MsgHandler, deadline time.Duration, autoAck bool)
 }
 
@@ -72,6 +72,8 @@ type Msg struct {
 // func(ctx context.Context, obj proto.Message, msg *Msg) error
 // for example, you can unmarshal a custom type..
 // func(ctx context.Context, accounts accounts.Account, msg *Msg) error
+// you can also unmarshal a JSON object by supplying any type of interface{}
+// func(ctx context.Context, accounts models.SomeJSONAccount, msg *Msg) error
 type Handler interface{}
 
 // MsgHandler is the internal or raw message handler
@@ -83,29 +85,34 @@ func SetClient(cli *Client) {
 }
 
 // Publish published on the client
-func (c *Client) Publish(ctx context.Context, topic string, msg proto.Message) error {
+func (c *Client) Publish(ctx context.Context, topic string, msg interface{}, json bool) error {
 	start := time.Now()
-	err := c.Provider.Publish(ctx, topic, msg)
+	err := c.Provider.Publish(ctx, topic, msg, json)
 	if err != nil {
 		return err
 	}
 
 	publishedCounter.WithLabelValues(topic, client.ServiceName).Inc()
-	publishedSize.WithLabelValues(topic, client.ServiceName).Add(float64(len([]byte(msg.String()))))
 	publishDurationsHistogram.Observe(time.Now().Sub(start).Seconds())
+
+	// Message sizing is only available for proto objects at the moment
+	protoMsg, ok := msg.(proto.Message)
+	if ok {
+		publishedSize.WithLabelValues(topic, client.ServiceName).Add(
+			float64(len([]byte(protoMsg.String()))),
+		)
+	}
 	return nil
 }
 
-// Publish is a convenience message which publishes to the current (global) publisher
+// Publish is a convenience message which publishes to the
+// current (global) publisher as protobuf
 func Publish(ctx context.Context, topic string, msg proto.Message) error {
-	start := time.Now()
-	err := client.Provider.Publish(ctx, topic, msg)
-	if err != nil {
-		return err
-	}
+	return client.Publish(ctx, topic, msg, false)
+}
 
-	publishedCounter.WithLabelValues(topic, client.ServiceName).Inc()
-	publishedSize.WithLabelValues(topic, client.ServiceName).Add(float64(len([]byte(msg.String()))))
-	publishDurationsHistogram.Observe(time.Now().Sub(start).Seconds())
-	return nil
+// PublishJSON is a convenience message which publishes to the
+// current (global) publisher as JSON
+func PublishJSON(ctx context.Context, topic string, obj interface{}) error {
+	return client.Publish(ctx, topic, obj, true)
 }

@@ -3,13 +3,11 @@ package pubsub
 import (
 	"context"
 	"time"
-
-	"github.com/golang/protobuf/proto"
 )
 
 type NoopProvider struct{}
 
-func (np NoopProvider) Publish(ctx context.Context, topic string, msg proto.Message) error {
+func (np NoopProvider) Publish(ctx context.Context, topic string, msg interface{}, json bool) error {
 	return nil
 }
 

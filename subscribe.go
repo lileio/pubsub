@@ -2,6 +2,7 @@ package pubsub
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"os/signal"
 	"reflect"
@@ -62,6 +63,8 @@ type HandlerOptions struct {
 	Deadline time.Duration
 	// Auto Ack the message automatically if return err == nil
 	AutoAck bool
+	// Decode JSON objects from pubsub instead of protobuf
+	JSON bool
 }
 
 // On takes HandlerOptions and subscribes to a topic, waiting for a protobuf message
@@ -96,10 +99,12 @@ func (c Client) On(opts HandlerOptions) {
 		but first arg was not context.Context`)
 	}
 
-	if !hndlr.In(1).Implements(reflect.TypeOf((*proto.Message)(nil)).Elem()) {
-		panic(`lile pubsub: handler should be of format
+	if !opts.JSON {
+		if !hndlr.In(1).Implements(reflect.TypeOf((*proto.Message)(nil)).Elem()) {
+			panic(`lile pubsub: handler should be of format
 		func(ctx context.Context, obj proto.Message, msg *Msg) error
 		but second arg does not implement proto.Message interface`)
+		}
 	}
 
 	if hndlr.In(2) != reflect.TypeOf(&Msg{}) {
@@ -113,8 +118,14 @@ func (c Client) On(opts HandlerOptions) {
 	cb := func(ctx context.Context, m Msg) error {
 		start := time.Now()
 
+		var err error
 		obj := reflect.New(hndlr.In(1).Elem()).Interface()
-		err := proto.Unmarshal(m.Data, obj.(proto.Message))
+		if opts.JSON {
+			err = json.Unmarshal(m.Data, obj)
+		} else {
+			err = proto.Unmarshal(m.Data, obj.(proto.Message))
+		}
+
 		if err != nil {
 			return errors.Wrap(err, "lile pubsub: could not unmarshal message")
 		}

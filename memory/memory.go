@@ -2,6 +2,7 @@ package memory
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -12,11 +13,19 @@ type MemoryProvider struct {
 	Msgs map[string][][]byte
 }
 
-func (mp *MemoryProvider) Publish(ctx context.Context, topic string, msg proto.Message) error {
+func (mp *MemoryProvider) Publish(ctx context.Context, topic string, msg interface{}, isJSON bool) error {
 	if mp.Msgs == nil {
 		mp.Msgs = make(map[string][][]byte, 0)
 	}
-	b, err := proto.Marshal(msg)
+
+	var b []byte
+	var err error
+	if isJSON {
+		b, err = json.Marshal(msg)
+	} else {
+		b, err = proto.Marshal(msg.(proto.Message))
+	}
+
 	if err != nil {
 		return err
 	}
@@ -28,9 +37,12 @@ func (mp *MemoryProvider) Publish(ctx context.Context, topic string, msg proto.M
 
 func (mp *MemoryProvider) Subscribe(topic, subscriberName string, h pubsub.MsgHandler, deadline time.Duration, autoAck bool) {
 	for _, v := range mp.Msgs[topic] {
-		h(context.Background(), pubsub.Msg{
+		err := h(context.Background(), pubsub.Msg{
 			Data: v,
 		})
+		if err != nil {
+			panic(err)
+		}
 	}
 	return
 }
