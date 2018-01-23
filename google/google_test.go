@@ -59,23 +59,19 @@ func TestGooglePublishSubscribe(t *testing.T) {
 	// Wait for subscription
 	select {
 	case <-done:
-	case <-time.After(20 * time.Second):
+	case <-time.After(10 * time.Second):
 		assert.Fail(t, "Subscription failed after timeout")
 	}
 
 	const op = "test_event"
 	recorder := zipkintracer.NewInMemoryRecorder()
-	tracer, err := zipkintracer.NewTracer(
-		recorder,
-		zipkintracer.ClientServerSameSpan(true),
-		zipkintracer.DebugMode(true),
-		zipkintracer.TraceID128Bit(true),
-	)
+	tracer, err := zipkintracer.NewTracer(recorder)
 	opentracing.SetGlobalTracer(tracer)
 	if err != nil {
 		t.Fatalf("Unable to create Tracer: %+v", err)
 	}
 
+	// A fake span from say, an RPC request
 	span := tracer.StartSpan(op)
 	span.LogFields(
 		log.String("event", "soft error"),
@@ -84,7 +80,11 @@ func TestGooglePublishSubscribe(t *testing.T) {
 	span.Finish()
 
 	ctx := opentracing.ContextWithSpan(context.Background(), span)
-	err = ps.Publish(ctx, topic, &a)
+
+	b, err := proto.Marshal(&a)
+	assert.Nil(t, nil)
+
+	err = ps.Publish(ctx, topic, b)
 	assert.Nil(t, err)
 
 	select {

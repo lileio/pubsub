@@ -7,7 +7,7 @@ import (
 
 type NoopProvider struct{}
 
-func (np NoopProvider) Publish(ctx context.Context, topic string, msg interface{}, json bool) error {
+func (np NoopProvider) Publish(ctx context.Context, topic string, b []byte) error {
 	return nil
 }
 

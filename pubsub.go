@@ -4,6 +4,7 @@ package pubsub
 
 import (
 	"context"
+	"encoding/json"
 	"time"
 
 	"github.com/golang/protobuf/proto"
@@ -46,7 +47,7 @@ type Client struct {
 
 // Provider is generic interface for a pub sub provider
 type Provider interface {
-	Publish(ctx context.Context, topic string, msg interface{}, json bool) error
+	Publish(ctx context.Context, topic string, b []byte) error
 	Subscribe(topic, subscriberName string, h MsgHandler, deadline time.Duration, autoAck bool)
 }
 
@@ -85,34 +86,48 @@ func SetClient(cli *Client) {
 }
 
 // Publish published on the client
-func (c *Client) Publish(ctx context.Context, topic string, msg interface{}, json bool) error {
+func (c *Client) Publish(ctx context.Context, topic string, msg interface{}, isJSON bool) error {
 	start := time.Now()
-	err := c.Provider.Publish(ctx, topic, msg, json)
+
+	var b []byte
+	var err error
+	if isJSON {
+		b, err = json.Marshal(msg)
+	} else {
+		b, err = proto.Marshal(msg.(proto.Message))
+	}
+
+	if err != nil {
+		return err
+	}
+
+	err = c.Provider.Publish(ctx, topic, b)
 	if err != nil {
 		return err
 	}
 
 	publishedCounter.WithLabelValues(topic, client.ServiceName).Inc()
 	publishDurationsHistogram.Observe(time.Now().Sub(start).Seconds())
-
-	// Message sizing is only available for proto objects at the moment
-	protoMsg, ok := msg.(proto.Message)
-	if ok {
-		publishedSize.WithLabelValues(topic, client.ServiceName).Add(
-			float64(len([]byte(protoMsg.String()))),
-		)
-	}
+	publishedSize.WithLabelValues(topic, client.ServiceName).Add(float64(len(b)))
 	return nil
 }
 
 // Publish is a convenience message which publishes to the
 // current (global) publisher as protobuf
-func Publish(ctx context.Context, topic string, msg proto.Message) error {
-	return client.Publish(ctx, topic, msg, false)
+func Publish(ctx context.Context, topic string, msg proto.Message) chan error {
+	errChan := make(chan error)
+	go func() {
+		errChan <- client.Publish(ctx, topic, msg, false)
+	}()
+	return errChan
 }
 
 // PublishJSON is a convenience message which publishes to the
 // current (global) publisher as JSON
-func PublishJSON(ctx context.Context, topic string, obj interface{}) error {
-	return client.Publish(ctx, topic, obj, true)
+func PublishJSON(ctx context.Context, topic string, obj interface{}) chan error {
+	errChan := make(chan error)
+	go func() {
+		errChan <- client.Publish(ctx, topic, obj, true)
+	}()
+	return errChan
 }
