@@ -2,7 +2,6 @@ package google
 
 import (
 	"context"
-	"strings"
 	"sync"
 	"time"
 
@@ -83,33 +82,33 @@ func (g *GoogleCloud) Subscribe(topic, subscriberName string, h ps.MsgHandler, d
 
 func (g *GoogleCloud) subscribe(topic, subscriberName string, h ps.MsgHandler, deadline time.Duration, autoAck bool, ready chan<- bool) {
 	go func() {
-		var sub *pubsub.Subscription
 		var err error
+		subName := subscriberName + "--" + topic
+		sub := g.client.Subscription(subName)
 
 		// Subscribe with backoff for failure (i.e topic doesn't exist yet)
-		for {
-			t, err := g.getTopic(topic)
-			if err != nil {
-				logrus.Errorf("Can't fetch topic: %s", err.Error())
-				continue
-			}
+		t, err := g.getTopic(topic)
+		if err != nil {
+			logrus.Panicf("Can't fetch topic: %s", err.Error())
+		}
 
-			subName := subscriberName + "--" + topic
+		ok, err := sub.Exists(context.Background())
+		if err != nil {
+			logrus.Panicf("Can't connect to pubsub: %s", err.Error())
+		}
+
+		if !ok {
 			sc := pubsub.SubscriptionConfig{
 				Topic:       t,
 				AckDeadline: deadline,
 			}
-
 			sub, err = g.client.CreateSubscription(ctxNet.Background(), subName, sc)
-			if err != nil && !strings.Contains(err.Error(), "AlreadyExists") {
-				logrus.Errorf("Can't subscribe to topic: %s", err.Error())
-				continue
+			if err != nil {
+				logrus.Panicf("Can't subscribe to topic: %s", err.Error())
 			}
-
-			logrus.Infof("Subscribed to topic %s with name %s", topic, subName)
-			break
 		}
 
+		logrus.Infof("Subscribed to topic %s with name %s", topic, subName)
 		ready <- true
 
 		// Listen to messages and call the MsgHandler
@@ -169,10 +168,20 @@ func (g *GoogleCloud) getTopic(name string) (*pubsub.Topic, error) {
 		return g.topics[name], nil
 	}
 
+	var err error
 	ctx := ctxNet.Background()
-	t, err := g.client.CreateTopic(ctx, name)
-	if err != nil && !strings.Contains(err.Error(), "exists") {
+	t := g.client.Topic(name)
+	ok, err := t.Exists(ctx)
+	if err != nil {
 		return nil, err
+	}
+
+	if !ok {
+		t, err = g.client.CreateTopic(ctx, name)
+		if err != nil {
+			return nil, err
+		}
+
 	}
 
 	g.topics[name] = t
