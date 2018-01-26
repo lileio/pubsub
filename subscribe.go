@@ -93,6 +93,12 @@ func (c Client) On(opts HandlerOptions) {
 		panic("lile pubsub: handler needs to be a func")
 	}
 
+	if hndlr.NumIn() != 3 {
+		panic(`lile pubsub: handler should be of format
+		func(ctx context.Context, obj proto.Message, msg *Msg) error
+		but didn't receive enough args`)
+	}
+
 	if hndlr.In(0) != reflect.TypeOf((*context.Context)(nil)).Elem() {
 		panic(`lile pubsub: handler should be of format
 		func(ctx context.Context, obj proto.Message, msg *Msg) error
