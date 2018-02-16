@@ -109,7 +109,7 @@ func (g *GoogleCloud) subscribe(topic, subscriberName string, h ps.MsgHandler, d
 			}
 		}
 
-		sc.ReceiveSettings = g.ReceiveSettings
+		sub.ReceiveSettings = g.ReceiveSettings
 
 		logrus.Infof("Subscribed to topic %s with name %s", topic, subName)
 		ready <- true
