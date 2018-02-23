@@ -28,11 +28,11 @@ var (
 			Help: "A counter of pubsub subscribers incoming bytes.",
 		}, []string{"topic", "service"})
 
-	subscribeDurationsHistogram = prometheus.NewHistogram(prometheus.HistogramOpts{
+	subscribeDurationsHistogram = prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Name:    "pubsub_subscribe_durations_histogram_seconds",
 		Help:    "PubSub subscriber latency distributions.",
-		Buckets: prometheus.DefBuckets,
-	})
+		Buckets: prometheus.ExponentialBuckets(0.01, 1.2, 40),
+	}, []string{"topic", "service"})
 )
 
 func init() {
@@ -161,9 +161,10 @@ func (c Client) On(opts HandlerOptions) {
 			c.ServiceName,
 		).Add(float64(len(m.Data)))
 
-		subscribeDurationsHistogram.Observe(
-			time.Now().Sub(start).Seconds(),
-		)
+		subscribeDurationsHistogram.WithLabelValues(
+			opts.Topic,
+			c.ServiceName,
+		).Observe(time.Now().Sub(start).Seconds())
 		return err
 	}
 

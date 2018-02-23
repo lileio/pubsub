@@ -117,8 +117,13 @@ func (c *Client) Publish(ctx context.Context, topic string, msg interface{}, isJ
 func Publish(ctx context.Context, topic string, msg proto.Message) chan error {
 	errChan := make(chan error)
 	go func() {
-		errChan <- client.Publish(ctx, topic, msg, false)
+		// Non blocking select
+		select {
+		case errChan <- client.Publish(ctx, topic, msg, false):
+		default:
+		}
 	}()
+
 	return errChan
 }
 
@@ -127,7 +132,11 @@ func Publish(ctx context.Context, topic string, msg proto.Message) chan error {
 func PublishJSON(ctx context.Context, topic string, obj interface{}) chan error {
 	errChan := make(chan error)
 	go func() {
-		errChan <- client.Publish(ctx, topic, obj, true)
+		// Non blocking select
+		select {
+		case errChan <- client.Publish(ctx, topic, obj, false):
+		default:
+		}
 	}()
 	return errChan
 }
