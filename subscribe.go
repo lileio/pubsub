@@ -95,27 +95,27 @@ func (c Client) On(opts HandlerOptions) {
 
 	if hndlr.NumIn() != 3 {
 		panic(`lile pubsub: handler should be of format
-		func(ctx context.Context, obj proto.Message, msg *Msg) error
+		func(ctx context.Context, obj *proto.Message, msg *Msg) error
 		but didn't receive enough args`)
 	}
 
 	if hndlr.In(0) != reflect.TypeOf((*context.Context)(nil)).Elem() {
 		panic(`lile pubsub: handler should be of format
-		func(ctx context.Context, obj proto.Message, msg *Msg) error
+		func(ctx context.Context, obj *proto.Message, msg *Msg) error
 		but first arg was not context.Context`)
 	}
 
 	if !opts.JSON {
 		if !hndlr.In(1).Implements(reflect.TypeOf((*proto.Message)(nil)).Elem()) {
 			panic(`lile pubsub: handler should be of format
-		func(ctx context.Context, obj proto.Message, msg *Msg) error
+		func(ctx context.Context, obj *proto.Message, msg *Msg) error
 		but second arg does not implement proto.Message interface`)
 		}
 	}
 
 	if hndlr.In(2) != reflect.TypeOf(&Msg{}) {
 		panic(`lile pubsub: handler should be of format
-		func(ctx context.Context, obj proto.Message, msg *Msg) error
+		func(ctx context.Context, obj *proto.Message, msg *Msg) error
 		but third arg was not pubsub.Msg`)
 	}
 

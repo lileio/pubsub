@@ -20,8 +20,9 @@ var (
 )
 
 type GoogleCloud struct {
-	client *pubsub.Client
-	topics map[string]*pubsub.Topic
+	client          *pubsub.Client
+	topics          map[string]*pubsub.Topic
+	ReceiveSettings pubsub.ReceiveSettings
 }
 
 type consumerOption struct {
@@ -107,6 +108,8 @@ func (g *GoogleCloud) subscribe(topic, subscriberName string, h ps.MsgHandler, d
 				logrus.Panicf("Can't subscribe to topic: %s", err.Error())
 			}
 		}
+
+		sub.ReceiveSettings = g.ReceiveSettings
 
 		logrus.Infof("Subscribed to topic %s with name %s", topic, subName)
 		ready <- true
