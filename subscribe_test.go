@@ -191,9 +191,9 @@ func TestMiddleware(t *testing.T) {
 
 	m := &memory.MemoryProvider{}
 	c := &pubsub.Client{
-		ServiceName: "test",
-		Provider:    m,
-		Middleware:  []pubsub.SubscriberMiddleware{mw, mw2},
+		ServiceName:          "test",
+		Provider:             m,
+		SubscriberMiddleware: []pubsub.SubscriberMiddleware{mw, mw2},
 	}
 
 	ps := gw.ABitOfEverything{

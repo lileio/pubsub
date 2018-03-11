@@ -123,7 +123,7 @@ func (c Client) On(opts HandlerOptions) {
 		return err
 	}
 
-	mw := chainMiddleware(c.Middleware...)
+	mw := chainMiddleware(c.SubscriberMiddleware...)
 	c.Provider.Subscribe(opts.Topic, opts.Name, mw(opts, cb), opts.Deadline, opts.AutoAck)
 }
 

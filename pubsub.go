@@ -13,9 +13,9 @@ var (
 
 // Client holds a reference to a Provider
 type Client struct {
-	ServiceName string
-	Provider    Provider
-	Middleware  []SubscriberMiddleware
+	ServiceName          string
+	Provider             Provider
+	SubscriberMiddleware []SubscriberMiddleware
 }
 
 // SetClient sets the global pubsub client, useful in tests
