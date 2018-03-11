@@ -119,19 +119,19 @@ func (g *GoogleCloud) subscribe(topic, subscriberName string, h ps.MsgHandler, d
 			err = sub.Receive(ctxNet.Background(), func(ctx ctxNet.Context, m *pubsub.Message) {
 				logrus.Infof("Recevied on topic %s, id: %s", topic, m.ID)
 
-				tracer := opentracing.GlobalTracer()
-				spanContext, err := tracer.Extract(
-					opentracing.TextMap,
-					opentracing.TextMapCarrier(m.Attributes))
-				if err == nil {
-					handlerSpan := tracer.StartSpan(
-						subscriberName,
-						consumerOption{clientContext: spanContext},
-						pubsubTag,
-					)
-					defer handlerSpan.Finish()
-					ctx = opentracing.ContextWithSpan(ctx, handlerSpan)
-				}
+				// tracer := opentracing.GlobalTracer()
+				// spanContext, err := tracer.Extract(
+				// 	opentracing.TextMap,
+				// 	opentracing.TextMapCarrier(m.Attributes))
+				// if err == nil {
+				// 	handlerSpan := tracer.StartSpan(
+				// 		subscriberName,
+				// 		consumerOption{clientContext: spanContext},
+				// 		pubsubTag,
+				// 	)
+				// 	defer handlerSpan.Finish()
+				// 	ctx = opentracing.ContextWithSpan(ctx, handlerSpan)
+				// }
 
 				msg := ps.Msg{
 					ID:       m.ID,

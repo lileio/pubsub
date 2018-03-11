@@ -164,3 +164,48 @@ func BenchmarkJSONSubscribers(b *testing.B) {
 	ts := TestSubscriber{JSON: true}
 	ts.Setup(c)
 }
+
+func TestMiddleware(t *testing.T) {
+	const stringKey = "test"
+	foundValue := false
+	middlewareCalled := false
+
+	mw := func(opts pubsub.HandlerOptions, next pubsub.MsgHandler) pubsub.MsgHandler {
+		return func(ctx context.Context, m pubsub.Msg) error {
+			ctx = context.WithValue(ctx, stringKey, "testvalue")
+			err := next(ctx, m)
+			middlewareCalled = true
+			return err
+		}
+	}
+
+	mw2 := func(opts pubsub.HandlerOptions, next pubsub.MsgHandler) pubsub.MsgHandler {
+		return func(ctx context.Context, m pubsub.Msg) error {
+			if v := ctx.Value("test"); v != nil {
+				foundValue = true
+			}
+
+			return next(ctx, m)
+		}
+	}
+
+	m := &memory.MemoryProvider{}
+	c := &pubsub.Client{
+		ServiceName: "test",
+		Provider:    m,
+		Middleware:  []pubsub.SubscriberMiddleware{mw, mw2},
+	}
+
+	ps := gw.ABitOfEverything{
+		StringValue: "strprefix/foo",
+	}
+
+	err := c.Publish(context.Background(), "test_topic", &ps, false)
+	assert.Nil(t, err)
+
+	ts := TestSubscriber{}
+	ts.Setup(c)
+
+	assert.True(t, foundValue)
+	assert.True(t, middlewareCalled)
+}

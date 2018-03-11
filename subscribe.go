@@ -6,40 +6,12 @@ import (
 	"os"
 	"os/signal"
 	"reflect"
-	"strconv"
 	"syscall"
 	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
-	"github.com/prometheus/client_golang/prometheus"
 )
-
-var (
-	pubsubHandled = prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Name: "pubsub_server_handled_total",
-			Help: "Total number of PubSubs handled on the server",
-		}, []string{"topic", "service", "success"})
-
-	subscriberSize = prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Name: "pubsub_incoming_bytes",
-			Help: "A counter of pubsub subscribers incoming bytes.",
-		}, []string{"topic", "service"})
-
-	subscribeDurationsHistogram = prometheus.NewHistogram(prometheus.HistogramOpts{
-		Name:    "pubsub_subscribe_durations_histogram_seconds",
-		Help:    "PubSub subscriber latency distributions.",
-		Buckets: prometheus.DefBuckets,
-	})
-)
-
-func init() {
-	prometheus.MustRegister(pubsubHandled)
-	prometheus.MustRegister(subscriberSize)
-	prometheus.MustRegister(subscribeDurationsHistogram)
-}
 
 // Subscribe starts a run loop with a Subscriber that listens to topics and
 // waits for a syscall.SIGINT or syscall.SIGTERM
@@ -122,8 +94,6 @@ func (c Client) On(opts HandlerOptions) {
 	fn := reflect.ValueOf(opts.Handler)
 
 	cb := func(ctx context.Context, m Msg) error {
-		start := time.Now()
-
 		var err error
 		obj := reflect.New(hndlr.In(1).Elem()).Interface()
 		if opts.JSON {
@@ -150,22 +120,21 @@ func (c Client) On(opts HandlerOptions) {
 			err = erri.(error)
 		}
 
-		pubsubHandled.WithLabelValues(
-			opts.Topic,
-			c.ServiceName,
-			strconv.FormatBool(err == nil),
-		).Inc()
-
-		subscriberSize.WithLabelValues(
-			opts.Topic,
-			c.ServiceName,
-		).Add(float64(len(m.Data)))
-
-		subscribeDurationsHistogram.Observe(
-			time.Now().Sub(start).Seconds(),
-		)
 		return err
 	}
 
-	c.Provider.Subscribe(opts.Topic, opts.Name, cb, opts.Deadline, opts.AutoAck)
+	mw := chainMiddleware(c.Middleware...)
+	c.Provider.Subscribe(opts.Topic, opts.Name, mw(opts, cb), opts.Deadline, opts.AutoAck)
+}
+
+func chainMiddleware(mw ...SubscriberMiddleware) SubscriberMiddleware {
+	return func(opts HandlerOptions, final MsgHandler) MsgHandler {
+		return func(ctx context.Context, m Msg) error {
+			last := final
+			for i := len(mw) - 1; i >= 0; i-- {
+				last = mw[i](opts, last)
+			}
+			return last(ctx, m)
+		}
+	}
 }
