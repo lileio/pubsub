@@ -30,7 +30,7 @@ func Middleware(logger *zap.Logger) pubsub.SubscriberMiddleware {
 			err := next(ctx, m)
 			elapsed := time.Now().Sub(start)
 
-			logger.Info("Processed PubSub Msg",
+			logger.Debug("Processed PubSub Msg",
 				zap.String("component", "pubsub"),
 				zap.String("id", m.ID),
 				zap.String("topic", opts.Topic),

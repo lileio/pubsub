@@ -6,8 +6,8 @@ import (
 	"time"
 
 	"cloud.google.com/go/pubsub"
+	"github.com/jpillora/backoff"
 	ps "github.com/lileio/pubsub"
-	ctxNet "golang.org/x/net/context"
 
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/ext"
@@ -15,29 +15,19 @@ import (
 )
 
 var (
-	mutex     = &sync.Mutex{}
-	pubsubTag = opentracing.Tag{string(ext.Component), "pubsub"}
+	mutex = &sync.Mutex{}
 )
 
+// GoogleCloud provides google cloud pubsub
 type GoogleCloud struct {
 	client          *pubsub.Client
 	topics          map[string]*pubsub.Topic
 	ReceiveSettings pubsub.ReceiveSettings
 }
 
-type consumerOption struct {
-	clientContext opentracing.SpanContext
-}
-
-func (c consumerOption) Apply(o *opentracing.StartSpanOptions) {
-	if c.clientContext != nil {
-		opentracing.ChildOf(c.clientContext).Apply(o)
-	}
-	ext.SpanKindConsumer.Apply(o)
-}
-
-func NewGoogleCloud(project_id string) (*GoogleCloud, error) {
-	c, err := pubsub.NewClient(ctxNet.Background(), project_id)
+// NewGoogleCloud creates a new GoogleCloud instace for a project
+func NewGoogleCloud(projectID string) (*GoogleCloud, error) {
+	c, err := pubsub.NewClient(context.Background(), projectID)
 	if err != nil {
 		return nil, err
 	}
@@ -48,14 +38,13 @@ func NewGoogleCloud(project_id string) (*GoogleCloud, error) {
 	}, nil
 }
 
+// Publish implements Publish
 func (g *GoogleCloud) Publish(ctx context.Context, topic string, b []byte) error {
 	tracer := opentracing.GlobalTracer()
-	span := spanFromContext(ctx, tracer, topic)
+	span := spanFromContext(ctx, topic)
 	defer span.Finish()
 
-	span.LogEvent("get topic")
-	t, err := g.getTopic(topic)
-	span.LogEvent("topic received")
+	t, err := g.getTopic(ctx, topic)
 	if err != nil {
 		return err
 	}
@@ -72,11 +61,12 @@ func (g *GoogleCloud) Publish(ctx context.Context, topic string, b []byte) error
 		Attributes: attrs,
 	})
 
-	_, err = res.Get(ctxNet.Background())
+	_, err = res.Get(context.Background())
 	span.LogEvent("publish confirmed")
 	return err
 }
 
+// Subscribe implements Subscribe
 func (g *GoogleCloud) Subscribe(topic, subscriberName string, h ps.MsgHandler, deadline time.Duration, autoAck bool) {
 	g.subscribe(topic, subscriberName, h, deadline, autoAck, make(chan bool, 1))
 }
@@ -88,7 +78,7 @@ func (g *GoogleCloud) subscribe(topic, subscriberName string, h ps.MsgHandler, d
 		sub := g.client.Subscription(subName)
 
 		// Subscribe with backoff for failure (i.e topic doesn't exist yet)
-		t, err := g.getTopic(topic)
+		t, err := g.getTopic(context.Background(), topic)
 		if err != nil {
 			logrus.Panicf("Can't fetch topic: %s", err.Error())
 		}
@@ -103,7 +93,7 @@ func (g *GoogleCloud) subscribe(topic, subscriberName string, h ps.MsgHandler, d
 				Topic:       t,
 				AckDeadline: deadline,
 			}
-			sub, err = g.client.CreateSubscription(ctxNet.Background(), subName, sc)
+			sub, err = g.client.CreateSubscription(context.Background(), subName, sc)
 			if err != nil {
 				logrus.Panicf("Can't subscribe to topic: %s", err.Error())
 			}
@@ -114,25 +104,20 @@ func (g *GoogleCloud) subscribe(topic, subscriberName string, h ps.MsgHandler, d
 		logrus.Infof("Subscribed to topic %s with name %s", topic, subName)
 		ready <- true
 
+		b := &backoff.Backoff{
+			//These are the defaults
+			Min:    200 * time.Millisecond,
+			Max:    600 * time.Second,
+			Factor: 2,
+			Jitter: true,
+		}
+
 		// Listen to messages and call the MsgHandler
 		for {
-			err = sub.Receive(ctxNet.Background(), func(ctx ctxNet.Context, m *pubsub.Message) {
+			err = sub.Receive(context.Background(), func(ctx context.Context, m *pubsub.Message) {
+				b.Reset()
+
 				logrus.Infof("Recevied on topic %s, id: %s", topic, m.ID)
-
-				// tracer := opentracing.GlobalTracer()
-				// spanContext, err := tracer.Extract(
-				// 	opentracing.TextMap,
-				// 	opentracing.TextMapCarrier(m.Attributes))
-				// if err == nil {
-				// 	handlerSpan := tracer.StartSpan(
-				// 		subscriberName,
-				// 		consumerOption{clientContext: spanContext},
-				// 		pubsubTag,
-				// 	)
-				// 	defer handlerSpan.Finish()
-				// 	ctx = opentracing.ContextWithSpan(ctx, handlerSpan)
-				// }
-
 				msg := ps.Msg{
 					ID:       m.ID,
 					Metadata: m.Attributes,
@@ -158,21 +143,24 @@ func (g *GoogleCloud) subscribe(topic, subscriberName string, h ps.MsgHandler, d
 
 			if err != nil {
 				logrus.Error(err)
+				time.Sleep(b.Duration())
 			}
 		}
 	}()
 }
 
-func (g *GoogleCloud) getTopic(name string) (*pubsub.Topic, error) {
+func (g *GoogleCloud) getTopic(ctx context.Context, name string) (*pubsub.Topic, error) {
 	mutex.Lock()
 	defer mutex.Unlock()
+
+	span := spanFromContext(ctx, "fetch topic")
+	defer span.Finish()
 
 	if g.topics[name] != nil {
 		return g.topics[name], nil
 	}
 
 	var err error
-	ctx := ctxNet.Background()
 	t := g.client.Topic(name)
 	ok, err := t.Exists(ctx)
 	if err != nil {
@@ -193,7 +181,7 @@ func (g *GoogleCloud) getTopic(name string) (*pubsub.Topic, error) {
 }
 
 func (g *GoogleCloud) deleteTopic(name string) error {
-	t, err := g.getTopic(name)
+	t, err := g.getTopic(context.Background(), name)
 	if err != nil {
 		return err
 	}
@@ -201,16 +189,15 @@ func (g *GoogleCloud) deleteTopic(name string) error {
 	return t.Delete(context.Background())
 }
 
-func spanFromContext(ctx context.Context, tracer opentracing.Tracer, name string) opentracing.Span {
+func spanFromContext(ctx context.Context, name string) opentracing.Span {
 	var parentCtx opentracing.SpanContext
 	if parent := opentracing.SpanFromContext(ctx); parent != nil {
 		parentCtx = parent.Context()
 	}
 
-	return tracer.StartSpan(
+	return opentracing.GlobalTracer().StartSpan(
 		name,
 		opentracing.ChildOf(parentCtx),
 		ext.SpanKindProducer,
-		pubsubTag,
 	)
 }
