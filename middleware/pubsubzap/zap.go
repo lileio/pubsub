@@ -6,12 +6,15 @@ import (
 
 	"github.com/lileio/pubsub"
 	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
 // DefaultLogger creates the default, minimal setup if a no logger is passed
 // to the middleware when setup
 func DefaultLogger() *zap.Logger {
-	logger, _ := zap.NewDevelopment()
+	config := zap.NewDevelopmentConfig()
+	config.EncoderConfig.EncodeLevel = zapcore.CapitalColorLevelEncoder
+	logger, _ := config.Build()
 	return logger
 }
 
@@ -23,16 +26,15 @@ func Middleware(logger *zap.Logger) pubsub.SubscriberMiddleware {
 
 	return func(opts pubsub.HandlerOptions, next pubsub.MsgHandler) pubsub.MsgHandler {
 		return func(ctx context.Context, m pubsub.Msg) error {
-			// if v := ctx.Value("test"); v != nil {
-			// }
-
 			start := time.Now()
 			err := next(ctx, m)
 			elapsed := time.Now().Sub(start)
 
-			logger.Debug("Processed pubsub msg",
+			logger.Info("Processed PubSub Msg",
+				zap.String("component", "pubsub"),
 				zap.String("id", m.ID),
-				zap.String("trace_id", "sometraceid"),
+				zap.String("topic", opts.Topic),
+				zap.String("handler", opts.Name),
 				zap.Duration("duration", elapsed),
 				zap.Error(err),
 			)

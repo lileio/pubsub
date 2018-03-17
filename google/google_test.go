@@ -28,7 +28,7 @@ func TestGooglePublishSubscribe(t *testing.T) {
 	}
 
 	if os.Getenv("GCLOUD_PROJECT") == "" {
-		assert.Fail(t, "No GCLOUD_PROJECT is set")
+		t.Skip()
 		return
 	}
 
