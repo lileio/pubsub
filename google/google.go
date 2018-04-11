@@ -2,6 +2,7 @@ package google
 
 import (
 	"context"
+	"strconv"
 	"sync"
 	"time"
 
@@ -20,9 +21,8 @@ var (
 
 // GoogleCloud provides google cloud pubsub
 type GoogleCloud struct {
-	client          *pubsub.Client
-	topics          map[string]*pubsub.Topic
-	ReceiveSettings pubsub.ReceiveSettings
+	client *pubsub.Client
+	topics map[string]*pubsub.Topic
 }
 
 // NewGoogleCloud creates a new GoogleCloud instace for a project
@@ -39,46 +39,33 @@ func NewGoogleCloud(projectID string) (*GoogleCloud, error) {
 }
 
 // Publish implements Publish
-func (g *GoogleCloud) Publish(ctx context.Context, topic string, b []byte) error {
-	tracer := opentracing.GlobalTracer()
-	span := spanFromContext(ctx, topic)
-	defer span.Finish()
-
+func (g *GoogleCloud) Publish(ctx context.Context, topic string, m ps.Msg) error {
 	t, err := g.getTopic(ctx, topic)
 	if err != nil {
 		return err
 	}
 
-	attrs := map[string]string{}
-	tracer.Inject(
-		span.Context(),
-		opentracing.TextMap,
-		opentracing.TextMapCarrier(attrs))
-
-	span.LogEvent("publish")
 	res := t.Publish(ctx, &pubsub.Message{
-		Data:       b,
-		Attributes: attrs,
+		Data:       m.Data,
+		Attributes: m.Metadata,
 	})
 
 	_, err = res.Get(context.Background())
-	span.LogEvent("publish confirmed")
 	return err
 }
 
 // Subscribe implements Subscribe
-func (g *GoogleCloud) Subscribe(topic, subscriberName string, h ps.MsgHandler, deadline time.Duration, autoAck bool) {
-	g.subscribe(topic, subscriberName, h, deadline, autoAck, make(chan bool, 1))
+func (g *GoogleCloud) Subscribe(opts ps.HandlerOptions, h ps.MsgHandler) {
+	g.subscribe(opts, h, make(chan bool, 1))
 }
 
-func (g *GoogleCloud) subscribe(topic, subscriberName string, h ps.MsgHandler, deadline time.Duration, autoAck bool, ready chan<- bool) {
+func (g *GoogleCloud) subscribe(opts ps.HandlerOptions, h ps.MsgHandler, ready chan<- bool) {
 	go func() {
 		var err error
-		subName := subscriberName + "--" + topic
+		subName := opts.Topic + "--" + opts.ServiceName + "." + opts.Name
 		sub := g.client.Subscription(subName)
 
-		// Subscribe with backoff for failure (i.e topic doesn't exist yet)
-		t, err := g.getTopic(context.Background(), topic)
+		t, err := g.getTopic(context.Background(), opts.Topic)
 		if err != nil {
 			logrus.Panicf("Can't fetch topic: %s", err.Error())
 		}
@@ -91,7 +78,7 @@ func (g *GoogleCloud) subscribe(topic, subscriberName string, h ps.MsgHandler, d
 		if !ok {
 			sc := pubsub.SubscriptionConfig{
 				Topic:       t,
-				AckDeadline: deadline,
+				AckDeadline: opts.Deadline,
 			}
 			sub, err = g.client.CreateSubscription(context.Background(), subName, sc)
 			if err != nil {
@@ -99,9 +86,7 @@ func (g *GoogleCloud) subscribe(topic, subscriberName string, h ps.MsgHandler, d
 			}
 		}
 
-		sub.ReceiveSettings = g.ReceiveSettings
-
-		logrus.Infof("Subscribed to topic %s with name %s", topic, subName)
+		logrus.Infof("Subscribed to topic %s with name %s", opts.Topic, subName)
 		ready <- true
 
 		b := &backoff.Backoff{
@@ -112,12 +97,14 @@ func (g *GoogleCloud) subscribe(topic, subscriberName string, h ps.MsgHandler, d
 			Jitter: true,
 		}
 
+		sub.ReceiveSettings = pubsub.ReceiveSettings{MaxOutstandingMessages: opts.Concurrency}
+
 		// Listen to messages and call the MsgHandler
 		for {
 			err = sub.Receive(context.Background(), func(ctx context.Context, m *pubsub.Message) {
 				b.Reset()
 
-				logrus.Infof("Recevied on topic %s, id: %s", topic, m.ID)
+				logrus.Debugf("Recevied on topic %s, id: %s", opts.Topic, m.ID)
 				msg := ps.Msg{
 					ID:       m.ID,
 					Metadata: m.Attributes,
@@ -132,18 +119,50 @@ func (g *GoogleCloud) subscribe(topic, subscriberName string, h ps.MsgHandler, d
 
 				err = h(ctx, msg)
 				if err != nil {
-					logrus.Error(err)
+					logrus.Errorf("couldn't process msg with id: %s, err: %s", m.ID, err)
+
+					attempts := 0
+					if m.Attributes["attempts"] != "" {
+						i, _ := strconv.Atoi(m.Attributes["attempts"])
+						attempts = i
+
+					}
+
+					if attempts >= opts.Retries-1 {
+						logrus.Debugf("Maximum retries reached on topic %s msg id: %s",
+							opts.Topic, m.ID)
+
+						m.Attributes["attempts"] = strconv.FormatInt(int64(attempts+1), 10)
+						g.Publish(ctx, opts.Topic+"-failures", ps.Msg{
+							Data:     m.Data,
+							Metadata: m.Attributes,
+						})
+
+						m.Ack()
+					}
+
+					m.Attributes["attempts"] = strconv.FormatInt(int64(attempts+1), 10)
+					g.Publish(ctx, opts.Topic, ps.Msg{
+						Data:     m.Data,
+						Metadata: m.Attributes,
+					})
+
+					m.Ack()
 					return
 				}
 
-				if autoAck {
+				if opts.AutoAck {
 					m.Ack()
 				}
 			})
 
 			if err != nil {
-				logrus.Error(err)
-				time.Sleep(b.Duration())
+				d := b.Duration()
+				logrus.Errorf(
+					"Subscription receive to topic %s failed, reconnecting in %v. Err: %v",
+					opts.Topic, d, err,
+				)
+				time.Sleep(d)
 			}
 		}
 	}()
@@ -172,7 +191,6 @@ func (g *GoogleCloud) getTopic(ctx context.Context, name string) (*pubsub.Topic,
 		if err != nil {
 			return nil, err
 		}
-
 	}
 
 	g.topics[name] = t

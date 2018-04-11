@@ -21,7 +21,7 @@ func (c *Client) Publish(ctx context.Context, topic string, msg interface{}, isJ
 		return err
 	}
 
-	err = c.Provider.Publish(ctx, topic, b)
+	err = c.Provider.Publish(ctx, topic, Msg{Data: b})
 	if err != nil {
 		return err
 	}
@@ -52,7 +52,7 @@ func Publish(ctx context.Context, topic string, msg proto.Message) *PublishResul
 func PublishJSON(ctx context.Context, topic string, obj interface{}) *PublishResult {
 	pr := &PublishResult{Ready: make(chan struct{})}
 	go func() {
-		err := client.Publish(ctx, topic, obj, false)
+		err := client.Publish(ctx, topic, obj, true)
 		pr.Err = err
 		close(pr.Ready)
 	}()

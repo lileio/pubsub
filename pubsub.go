@@ -4,7 +4,6 @@ package pubsub
 
 import (
 	"context"
-	"time"
 )
 
 var (
@@ -25,8 +24,8 @@ func SetClient(cli *Client) {
 
 // Provider is generic interface for a pub sub provider
 type Provider interface {
-	Publish(ctx context.Context, topic string, b []byte) error
-	Subscribe(topic, subscriberName string, h MsgHandler, deadline time.Duration, autoAck bool)
+	Publish(ctx context.Context, topic string, m Msg) error
+	Subscribe(opts HandlerOptions, handler MsgHandler)
 }
 
 // Subscriber is a service that listens to events and registers handlers

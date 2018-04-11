@@ -29,10 +29,18 @@ type HandlerOptions struct {
 	Topic string
 	// The name of this subscriber/function
 	Name string
+	// The name of this subscriber/function's service
+	ServiceName string
 	// The function to invoke
 	Handler Handler
 	// A message deadline/timeout
 	Deadline time.Duration
+	// Concurrency sets the maximum number of msgs to be run concurrently
+	// default: 20
+	Concurrency int
+	// Retries is the amount of times to retry before sending to a dead queue
+	// default: 3
+	Retries int
 	// Auto Ack the message automatically if return err == nil
 	AutoAck bool
 	// Decode JSON objects from pubsub instead of protobuf
@@ -57,6 +65,16 @@ func (c Client) On(opts HandlerOptions) {
 	// Set some default options
 	if opts.Deadline == 0 {
 		opts.Deadline = 10 * time.Second
+	}
+
+	// Set some default options
+	if opts.Retries == 0 {
+		opts.Retries = 3
+	}
+
+	// Set some default concurrency
+	if opts.Concurrency == 0 {
+		opts.Concurrency = 20
 	}
 
 	// Reflection is slow, but this is done only once on subscriber setup
@@ -124,7 +142,8 @@ func (c Client) On(opts HandlerOptions) {
 	}
 
 	mw := chainMiddleware(c.SubscriberMiddleware...)
-	c.Provider.Subscribe(opts.Topic, opts.Name, mw(opts, cb), opts.Deadline, opts.AutoAck)
+
+	c.Provider.Subscribe(opts, mw(opts, cb))
 }
 
 func chainMiddleware(mw ...SubscriberMiddleware) SubscriberMiddleware {
