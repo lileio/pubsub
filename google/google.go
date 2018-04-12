@@ -39,7 +39,7 @@ func NewGoogleCloud(projectID string) (*GoogleCloud, error) {
 }
 
 // Publish implements Publish
-func (g *GoogleCloud) Publish(ctx context.Context, topic string, m ps.Msg) error {
+func (g *GoogleCloud) Publish(ctx context.Context, topic string, m *ps.Msg) error {
 	t, err := g.getTopic(ctx, topic)
 	if err != nil {
 		return err
@@ -133,7 +133,7 @@ func (g *GoogleCloud) subscribe(opts ps.HandlerOptions, h ps.MsgHandler, ready c
 							opts.Topic, m.ID)
 
 						m.Attributes["attempts"] = strconv.FormatInt(int64(attempts+1), 10)
-						g.Publish(ctx, opts.Topic+"-failures", ps.Msg{
+						g.Publish(ctx, opts.Topic+"-failures", &ps.Msg{
 							Data:     m.Data,
 							Metadata: m.Attributes,
 						})
@@ -142,7 +142,7 @@ func (g *GoogleCloud) subscribe(opts ps.HandlerOptions, h ps.MsgHandler, ready c
 					}
 
 					m.Attributes["attempts"] = strconv.FormatInt(int64(attempts+1), 10)
-					g.Publish(ctx, opts.Topic, ps.Msg{
+					g.Publish(ctx, opts.Topic, &ps.Msg{
 						Data:     m.Data,
 						Metadata: m.Attributes,
 					})

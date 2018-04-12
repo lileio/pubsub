@@ -141,17 +141,16 @@ func (c Client) On(opts HandlerOptions) {
 		return err
 	}
 
-	mw := chainMiddleware(c.SubscriberMiddleware...)
-
+	mw := chainSubscriberMiddleware(c.Middleware...)
 	c.Provider.Subscribe(opts, mw(opts, cb))
 }
 
-func chainMiddleware(mw ...SubscriberMiddleware) SubscriberMiddleware {
+func chainSubscriberMiddleware(mw ...Middleware) func(opts HandlerOptions, next MsgHandler) MsgHandler {
 	return func(opts HandlerOptions, final MsgHandler) MsgHandler {
 		return func(ctx context.Context, m Msg) error {
 			last := final
 			for i := len(mw) - 1; i >= 0; i-- {
-				last = mw[i](opts, last)
+				last = mw[i].SubscribeInterceptor(opts, last)
 			}
 			return last(ctx, m)
 		}

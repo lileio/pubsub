@@ -12,9 +12,9 @@ var (
 
 // Client holds a reference to a Provider
 type Client struct {
-	ServiceName          string
-	Provider             Provider
-	SubscriberMiddleware []SubscriberMiddleware
+	ServiceName string
+	Provider    Provider
+	Middleware  []Middleware
 }
 
 // SetClient sets the global pubsub client, useful in tests
@@ -24,7 +24,7 @@ func SetClient(cli *Client) {
 
 // Provider is generic interface for a pub sub provider
 type Provider interface {
-	Publish(ctx context.Context, topic string, m Msg) error
+	Publish(ctx context.Context, topic string, m *Msg) error
 	Subscribe(opts HandlerOptions, handler MsgHandler)
 }
 
@@ -57,6 +57,11 @@ type Handler interface{}
 // MsgHandler is the internal or raw message handler
 type MsgHandler func(ctx context.Context, m Msg) error
 
-// SubscriberMiddleware is the function signature for injecting middlware
-// into subscribers
-type SubscriberMiddleware func(opts HandlerOptions, next MsgHandler) MsgHandler
+// PublishHandler wraps a call to publish, for interception
+type PublishHandler func(ctx context.Context, topic string, m *Msg) error
+
+// Middleware is an interface to provide subscriber and publisher interceptors
+type Middleware interface {
+	SubscribeInterceptor(opts HandlerOptions, next MsgHandler) MsgHandler
+	PublisherMsgInterceptor(next PublishHandler) PublishHandler
+}

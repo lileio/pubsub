@@ -26,30 +26,71 @@ func (c consumerOption) Apply(o *opentracing.StartSpanOptions) {
 	ext.SpanKindConsumer.Apply(o)
 }
 
-// Middleware returns a subscriber middleware with added logging via Zap
-func Middleware(tracer opentracing.Tracer) pubsub.SubscriberMiddleware {
-	if tracer == nil {
-		tracer = opentracing.GlobalTracer()
-	}
+// Middleware provides opentracing for pubsub to persist traces
+type Middleware struct {
+	Tracer opentracing.Tracer
+}
 
-	return func(opts pubsub.HandlerOptions, next pubsub.MsgHandler) pubsub.MsgHandler {
-		return func(ctx context.Context, m pubsub.Msg) error {
-			spanContext, err := tracer.Extract(
-				opentracing.TextMap,
-				opentracing.TextMapCarrier(m.Metadata))
-
-			if err == nil {
-				handlerSpan := tracer.StartSpan(
-					opts.Name,
-					consumerOption{clientContext: spanContext},
-					pubsubTag,
-				)
-				defer handlerSpan.Finish()
-				ctx = opentracing.ContextWithSpan(ctx, handlerSpan)
-			}
-
-			err = next(ctx, m)
-			return err
+// SubscribeInterceptor returns a subscriber middleware with opentracing
+func (o Middleware) SubscribeInterceptor(opts pubsub.HandlerOptions, next pubsub.MsgHandler) pubsub.MsgHandler {
+	return func(ctx context.Context, m pubsub.Msg) error {
+		var tracer = o.Tracer
+		if tracer == nil {
+			tracer = opentracing.GlobalTracer()
 		}
+
+		spanContext, err := tracer.Extract(
+			opentracing.TextMap,
+			opentracing.TextMapCarrier(m.Metadata))
+
+		if err == nil {
+			handlerSpan := tracer.StartSpan(
+				opts.Name,
+				consumerOption{clientContext: spanContext},
+				pubsubTag,
+			)
+			defer handlerSpan.Finish()
+			ctx = opentracing.ContextWithSpan(ctx, handlerSpan)
+		}
+
+		return next(ctx, m)
 	}
+}
+
+// PublisherMsgInterceptor inserts opentracing headers into an outgoing msg
+func (o Middleware) PublisherMsgInterceptor(next pubsub.PublishHandler) pubsub.PublishHandler {
+	return func(ctx context.Context, topic string, m *pubsub.Msg) error {
+		var tracer = o.Tracer
+		if tracer == nil {
+			tracer = opentracing.GlobalTracer()
+		}
+
+		span := spanFromContext(ctx, tracer, topic)
+		defer span.Finish()
+
+		if m.Metadata == nil {
+			m.Metadata = map[string]string{}
+		}
+
+		tracer.Inject(
+			span.Context(),
+			opentracing.TextMap,
+			opentracing.TextMapCarrier(m.Metadata))
+
+		return next(ctx, topic, m)
+	}
+}
+
+func spanFromContext(ctx context.Context, tracer opentracing.Tracer, name string) opentracing.Span {
+	var parentCtx opentracing.SpanContext
+	if parent := opentracing.SpanFromContext(ctx); parent != nil {
+		parentCtx = parent.Context()
+	}
+
+	return tracer.StartSpan(
+		name,
+		opentracing.ChildOf(parentCtx),
+		ext.SpanKindProducer,
+		pubsubTag,
+	)
 }

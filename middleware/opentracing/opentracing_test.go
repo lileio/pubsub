@@ -50,13 +50,13 @@ func TestOpentracingMiddleware(t *testing.T) {
 
 	ctx := opentracing.ContextWithSpan(context.Background(), span)
 
-	m1 := Middleware(tracer)
+	m1 := Middleware{Tracer: tracer}
 
 	m := &memory.MemoryProvider{}
 	c := &pubsub.Client{
-		ServiceName:          "test",
-		Provider:             m,
-		SubscriberMiddleware: []pubsub.SubscriberMiddleware{m1},
+		ServiceName: "test",
+		Provider:    m,
+		Middleware:  []pubsub.Middleware{m1},
 	}
 
 	ps := gw.ABitOfEverything{

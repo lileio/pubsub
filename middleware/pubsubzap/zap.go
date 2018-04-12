@@ -18,27 +18,52 @@ func DefaultLogger() *zap.Logger {
 	return logger
 }
 
-// Middleware returns a subscriber middleware with added logging via Zap
-func Middleware(logger *zap.Logger) pubsub.SubscriberMiddleware {
-	if logger == nil {
-		logger = DefaultLogger()
-	}
+// Middleware is middleware for zap logging
+type Middleware struct {
+	Logger *zap.Logger
+}
 
-	return func(opts pubsub.HandlerOptions, next pubsub.MsgHandler) pubsub.MsgHandler {
-		return func(ctx context.Context, m pubsub.Msg) error {
-			start := time.Now()
-			err := next(ctx, m)
-			elapsed := time.Now().Sub(start)
-
-			logger.Debug("Processed PubSub Msg",
-				zap.String("component", "pubsub"),
-				zap.String("id", m.ID),
-				zap.String("topic", opts.Topic),
-				zap.String("handler", opts.Name),
-				zap.Duration("duration", elapsed),
-				zap.Error(err),
-			)
-			return err
+// SubscribeInterceptor returns a subscriber middleware with added logging via Zap
+func (o Middleware) SubscribeInterceptor(opts pubsub.HandlerOptions, next pubsub.MsgHandler) pubsub.MsgHandler {
+	return func(ctx context.Context, m pubsub.Msg) error {
+		if o.Logger == nil {
+			o.Logger = DefaultLogger()
 		}
+
+		start := time.Now()
+		err := next(ctx, m)
+		elapsed := time.Now().Sub(start)
+
+		o.Logger.Debug("Processed PubSub Msg",
+			zap.String("component", "pubsub"),
+			zap.String("id", m.ID),
+			zap.String("topic", opts.Topic),
+			zap.String("handler", opts.Name),
+			zap.Duration("duration", elapsed),
+			zap.Error(err),
+		)
+		return err
+	}
+}
+
+// PublisherMsgInterceptor add logging to the publisher
+func (o Middleware) PublisherMsgInterceptor(next pubsub.PublishHandler) pubsub.PublishHandler {
+	return func(ctx context.Context, topic string, m *pubsub.Msg) error {
+		if o.Logger == nil {
+			o.Logger = DefaultLogger()
+		}
+
+		start := time.Now()
+		err := next(ctx, topic, m)
+		elapsed := time.Now().Sub(start)
+
+		o.Logger.Debug("Processed PubSub Msg",
+			zap.String("component", "pubsub"),
+			zap.String("topic", topic),
+			zap.Duration("duration", elapsed),
+			zap.Error(err),
+		)
+
+		return err
 	}
 }

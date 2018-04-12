@@ -21,12 +21,12 @@ func (c *Client) Publish(ctx context.Context, topic string, msg interface{}, isJ
 		return err
 	}
 
-	err = c.Provider.Publish(ctx, topic, Msg{Data: b})
-	if err != nil {
-		return err
-	}
+	m := &Msg{Data: b}
 
-	return nil
+	mw := chainPublisherMiddleware(c.Middleware...)
+	return mw(func(ctx context.Context, topic string, m *Msg) error {
+		return c.Provider.Publish(ctx, topic, m)
+	})(ctx, topic, m)
 }
 
 // A PublishResult holds the result from a call to Publish.
@@ -57,4 +57,16 @@ func PublishJSON(ctx context.Context, topic string, obj interface{}) *PublishRes
 		close(pr.Ready)
 	}()
 	return pr
+}
+
+func chainPublisherMiddleware(mw ...Middleware) func(next PublishHandler) PublishHandler {
+	return func(final PublishHandler) PublishHandler {
+		return func(ctx context.Context, topic string, m *Msg) error {
+			last := final
+			for i := len(mw) - 1; i >= 0; i-- {
+				last = mw[i].PublisherMsgInterceptor(last)
+			}
+			return last(ctx, topic, m)
+		}
+	}
 }

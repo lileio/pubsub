@@ -30,13 +30,13 @@ func (ts *TestSubscriber) Setup(c *pubsub.Client) {
 }
 
 func TestZapMiddleware(t *testing.T) {
-	m1 := Middleware(nil)
+	m1 := Middleware{}
 
 	m := &memory.MemoryProvider{}
 	c := &pubsub.Client{
-		ServiceName:          "test",
-		Provider:             m,
-		SubscriberMiddleware: []pubsub.SubscriberMiddleware{m1},
+		ServiceName: "test",
+		Provider:    m,
+		Middleware:  []pubsub.Middleware{m1},
 	}
 
 	ps := gw.ABitOfEverything{

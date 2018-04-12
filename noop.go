@@ -8,7 +8,7 @@ import (
 type NoopProvider struct{}
 
 // Publish does nothing
-func (np NoopProvider) Publish(ctx context.Context, topic string, m Msg) error {
+func (np NoopProvider) Publish(ctx context.Context, topic string, m *Msg) error {
 	return nil
 }
 
