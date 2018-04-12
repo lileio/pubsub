@@ -47,7 +47,7 @@ func (o Middleware) SubscribeInterceptor(opts pubsub.HandlerOptions, next pubsub
 }
 
 // PublisherMsgInterceptor add logging to the publisher
-func (o Middleware) PublisherMsgInterceptor(next pubsub.PublishHandler) pubsub.PublishHandler {
+func (o Middleware) PublisherMsgInterceptor(serviceName string, next pubsub.PublishHandler) pubsub.PublishHandler {
 	return func(ctx context.Context, topic string, m *pubsub.Msg) error {
 		if o.Logger == nil {
 			o.Logger = DefaultLogger()

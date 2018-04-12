@@ -63,5 +63,5 @@ type PublishHandler func(ctx context.Context, topic string, m *Msg) error
 // Middleware is an interface to provide subscriber and publisher interceptors
 type Middleware interface {
 	SubscribeInterceptor(opts HandlerOptions, next MsgHandler) MsgHandler
-	PublisherMsgInterceptor(next PublishHandler) PublishHandler
+	PublisherMsgInterceptor(serviceName string, next PublishHandler) PublishHandler
 }

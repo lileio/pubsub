@@ -24,7 +24,7 @@ func (c *Client) Publish(ctx context.Context, topic string, msg interface{}, isJ
 	m := &Msg{Data: b}
 
 	mw := chainPublisherMiddleware(c.Middleware...)
-	return mw(func(ctx context.Context, topic string, m *Msg) error {
+	return mw(c.ServiceName, func(ctx context.Context, topic string, m *Msg) error {
 		return c.Provider.Publish(ctx, topic, m)
 	})(ctx, topic, m)
 }
@@ -59,12 +59,12 @@ func PublishJSON(ctx context.Context, topic string, obj interface{}) *PublishRes
 	return pr
 }
 
-func chainPublisherMiddleware(mw ...Middleware) func(next PublishHandler) PublishHandler {
-	return func(final PublishHandler) PublishHandler {
+func chainPublisherMiddleware(mw ...Middleware) func(serviceName string, next PublishHandler) PublishHandler {
+	return func(serviceName string, final PublishHandler) PublishHandler {
 		return func(ctx context.Context, topic string, m *Msg) error {
 			last := final
 			for i := len(mw) - 1; i >= 0; i-- {
-				last = mw[i].PublisherMsgInterceptor(last)
+				last = mw[i].PublisherMsgInterceptor(serviceName, last)
 			}
 			return last(ctx, topic, m)
 		}
