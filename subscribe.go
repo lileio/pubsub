@@ -119,6 +119,12 @@ func (c Client) On(opts HandlerOptions) {
 		but third arg was not pubsub.Msg`)
 	}
 
+	if !hndlr.Out(0).Implements(reflect.TypeOf((*error)(nil)).Elem()) {
+		panic(`lile pubsub: handler should be of format
+		func(ctx context.Context, obj *proto.Message, msg *Msg) error
+		but output type is not error`)
+	}
+
 	fn := reflect.ValueOf(opts.Handler)
 
 	cb := func(ctx context.Context, m Msg) error {
