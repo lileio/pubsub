@@ -27,6 +27,12 @@
   version = "0.11.0"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/beorn7/perks"
+  packages = ["quantile"]
+  revision = "3a771d992973f24aa725d07868b467d1ddfceafb"
+
+[[projects]]
   name = "github.com/davecgh/go-spew"
   packages = ["spew"]
   revision = "346938d642f2ec3594ed81d874461961cd0faa76"
@@ -105,6 +111,12 @@
   version = "v1.3.1"
 
 [[projects]]
+  name = "github.com/jpillora/backoff"
+  packages = ["."]
+  revision = "8eab2debe79d12b7bd3d10653910df25fa9552ba"
+  version = "1.0.0"
+
+[[projects]]
   branch = "master"
   name = "github.com/kr/logfmt"
   packages = ["."]
@@ -115,6 +127,12 @@
   packages = ["test"]
   revision = "11e1d2c7ab3d6c0ec65e17918790faefa4b5c511"
   version = "0.0.1"
+
+[[projects]]
+  name = "github.com/matttproud/golang_protobuf_extensions"
+  packages = ["pbutil"]
+  revision = "3247c84500bff8d9fb6d579d800f20b3e091582c"
+  version = "v1.0.0"
 
 [[projects]]
   branch = "master"
@@ -170,6 +188,39 @@
   version = "v1.0.0"
 
 [[projects]]
+  name = "github.com/prometheus/client_golang"
+  packages = ["prometheus"]
+  revision = "c5b7fccd204277076155f10851dad72b76a49317"
+  version = "v0.8.0"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/prometheus/client_model"
+  packages = ["go"]
+  revision = "99fa1f4be8e564e8a6b613da7fa6f46c9edafc6c"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/prometheus/common"
+  packages = [
+    "expfmt",
+    "internal/bitbucket.org/ww/goautoneg",
+    "model"
+  ]
+  revision = "38c53a9f4bfcd932d1b00bfc65e256a7fba6b37a"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/prometheus/procfs"
+  packages = [
+    ".",
+    "internal/util",
+    "nfs",
+    "xfs"
+  ]
+  revision = "8b1c2da0d56deffdbb9e48d4414b4e674bd8083e"
+
+[[projects]]
   branch = "master"
   name = "github.com/rcrowley/go-metrics"
   packages = ["."]
@@ -180,6 +231,12 @@
   packages = ["."]
   revision = "f58768cc1a7a7e77a3bd49e98cdd21419399b6a3"
   version = "v1.2.0"
+
+[[projects]]
+  branch = "master"
+  name = "github.com/segmentio/kafka-go"
+  packages = ["."]
+  revision = "b9fe2a626ad790b4169811629601c42d2eeeb7cc"
 
 [[projects]]
   branch = "master"
@@ -198,20 +255,6 @@
   packages = ["assert"]
   revision = "b91bfb9ebec76498946beb6af7c0230c7cc7ba6c"
   version = "v1.2.0"
-
-[[projects]]
-  name = "go.opencensus.io"
-  packages = [
-    "internal",
-    "internal/tagencoding",
-    "stats",
-    "stats/internal",
-    "stats/view",
-    "tag",
-    "trace"
-  ]
-  revision = "52b12e1eb8fdf769ad0bf5fd73a2af9484e6b196"
-  version = "v0.4.0"
 
 [[projects]]
   name = "go.uber.org/atomic"
@@ -389,6 +432,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "9730f930c121e2c6c3ba4c5e4f9fc9e31a5ea3775b6b07d88fe34a06fd4df321"
+  inputs-digest = "e1d0eed11c43d67bfa6f46a13ffc6cbb489f9e18563f7b44ca69de2e9a653a15"
   solver-name = "gps-cdcl"
   solver-version = 1
