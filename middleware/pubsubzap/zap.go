@@ -57,7 +57,7 @@ func (o Middleware) PublisherMsgInterceptor(next pubsub.PublishHandler) pubsub.P
 		err := next(ctx, topic, m)
 		elapsed := time.Now().Sub(start)
 
-		o.Logger.Debug("Processed PubSub Msg",
+		o.Logger.Debug("Published PubSub Msg",
 			zap.String("component", "pubsub"),
 			zap.String("topic", topic),
 			zap.Duration("duration", elapsed),
