@@ -2,6 +2,9 @@ package kafka
 
 import (
 	"context"
+	"io/ioutil"
+	"log"
+	"os"
 	"sync"
 	"time"
 
@@ -25,7 +28,11 @@ type Provider struct {
 
 // Publish publishes a message to Kafka with a uuid as the key
 func (p *Provider) Publish(ctx context.Context, topic string, m *pubsub.Msg) error {
-	w := p.writerForTopic(ctx, topic)
+	w, err := p.writerForTopic(ctx, topic)
+	if err != nil {
+		return err
+	}
+
 	u1, err := uuid.NewV1()
 	if err != nil {
 		return err
@@ -45,13 +52,14 @@ func (p *Provider) Subscribe(opts pubsub.HandlerOptions, h pubsub.MsgHandler) {
 		Brokers:        p.Brokers,
 		GroupID:        opts.ServiceName + "." + opts.Name,
 		Topic:          opts.Topic,
-		MinBytes:       10e3, // 10KB
 		MaxBytes:       10e6, // 10MB
 		CommitInterval: time.Second,
+		MaxWait:        50 * time.Millisecond,
+		Logger:         log.New(os.Stdout, "pubsub.kafka: ", log.Lshortfile),
+		ErrorLogger:    log.New(ioutil.Discard, "pubsub.kafka.err: ", log.Lshortfile),
 	})
 
 	b := &backoff.Backoff{
-		//These are the defaults
 		Min:    200 * time.Millisecond,
 		Max:    600 * time.Second,
 		Factor: 2,
@@ -88,13 +96,17 @@ func (p *Provider) Subscribe(opts pubsub.HandlerOptions, h pubsub.MsgHandler) {
 				break
 			}
 
-			logrus.Debugf("message at topic/partition/offset %v/%v/%v: %s = %s\n",
-				m.Topic, m.Partition, m.Offset, string(m.Key), string(m.Value))
+			if opts.AutoAck {
+				msg.Ack()
+			}
+
+			logrus.Debugf("message at topic/partition/offset %v/%v/%v\n",
+				m.Topic, m.Partition, m.Offset)
 		}
 	}()
 }
 
-func (p *Provider) writerForTopic(ctx context.Context, topic string) *kafka.Writer {
+func (p *Provider) writerForTopic(ctx context.Context, topic string) (*kafka.Writer, error) {
 	mutex.Lock()
 	defer mutex.Unlock()
 
@@ -103,7 +115,23 @@ func (p *Provider) writerForTopic(ctx context.Context, topic string) *kafka.Writ
 	}
 
 	if p.writers[topic] != nil {
-		return p.writers[topic]
+		return p.writers[topic], nil
+	}
+
+	if len(p.Brokers) > 0 {
+		c, err := kafka.DefaultDialer.Dial("tcp", p.Brokers[0])
+		if err != nil {
+			return nil, err
+		}
+
+		logrus.Debugf("Creating Topic %s in Kafka", topic)
+		err = c.CreateTopics(kafka.TopicConfig{
+			Topic: topic,
+		})
+		if err != nil {
+			logrus.Errorf("Error creating Topic %s in Kafka, err %s", topic, err.Error())
+			return nil, err
+		}
 	}
 
 	w := kafka.NewWriter(kafka.WriterConfig{
@@ -113,5 +141,5 @@ func (p *Provider) writerForTopic(ctx context.Context, topic string) *kafka.Writ
 	})
 
 	p.writers[topic] = w
-	return w
+	return w, nil
 }
