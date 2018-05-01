@@ -16,3 +16,9 @@ func (np NoopProvider) Publish(ctx context.Context, topic string, m *Msg) error 
 func (np NoopProvider) Subscribe(opts HandlerOptions, h MsgHandler) {
 	return
 }
+
+// Shutdown shutsdown immediately
+func (np NoopProvider) Shutdown(done chan bool) {
+	done <- true
+	return
+}

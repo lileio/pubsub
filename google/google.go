@@ -22,6 +22,7 @@ var (
 type GoogleCloud struct {
 	client *pubsub.Client
 	topics map[string]*pubsub.Topic
+	subs   map[string]context.CancelFunc
 }
 
 // NewGoogleCloud creates a new GoogleCloud instace for a project
@@ -34,6 +35,7 @@ func NewGoogleCloud(projectID string) (*GoogleCloud, error) {
 	return &GoogleCloud{
 		client: c,
 		topics: map[string]*pubsub.Topic{},
+		subs:   map[string]context.CancelFunc{},
 	}, nil
 }
 
@@ -56,6 +58,22 @@ func (g *GoogleCloud) Publish(ctx context.Context, topic string, m *ps.Msg) erro
 // Subscribe implements Subscribe
 func (g *GoogleCloud) Subscribe(opts ps.HandlerOptions, h ps.MsgHandler) {
 	g.subscribe(opts, h, make(chan bool, 1))
+}
+
+// Shutdown shuts down all subscribers gracefully
+func (g *GoogleCloud) Shutdown(done chan bool) {
+	var wg sync.WaitGroup
+	for k, v := range g.subs {
+		wg.Add(1)
+		logrus.Infof("Shutting down sub for %s", k)
+		go func(c context.CancelFunc) {
+			c()
+			wg.Done()
+		}(v)
+	}
+	wg.Wait()
+	done <- true
+	return
 }
 
 func (g *GoogleCloud) subscribe(opts ps.HandlerOptions, h ps.MsgHandler, ready chan<- bool) {
@@ -96,11 +114,15 @@ func (g *GoogleCloud) subscribe(opts ps.HandlerOptions, h ps.MsgHandler, ready c
 			Jitter: true,
 		}
 
-		sub.ReceiveSettings = pubsub.ReceiveSettings{MaxOutstandingMessages: opts.Concurrency}
+		sub.ReceiveSettings = pubsub.ReceiveSettings{
+			MaxOutstandingMessages: opts.Concurrency,
+			MaxExtension:           opts.Deadline,
+		}
 
 		// Listen to messages and call the MsgHandler
 		for {
-			err = sub.Receive(context.Background(), func(ctx context.Context, m *pubsub.Message) {
+			cctx, cancel := context.WithCancel(context.Background())
+			err = sub.Receive(cctx, func(ctx context.Context, m *pubsub.Message) {
 				b.Reset()
 				msg := ps.Msg{
 					ID:       m.ID,
@@ -132,6 +154,8 @@ func (g *GoogleCloud) subscribe(opts ps.HandlerOptions, h ps.MsgHandler, ready c
 				)
 				time.Sleep(d)
 			}
+
+			g.subs[subName] = cancel
 		}
 	}()
 }

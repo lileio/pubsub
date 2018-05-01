@@ -21,6 +21,10 @@ func Subscribe(s Subscriber) {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 	<-sigs
+
+	done := make(chan bool)
+	client.Provider.Shutdown(done)
+	<-done
 }
 
 // HandlerOptions defines the options for a subscriber handler

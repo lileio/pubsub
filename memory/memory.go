@@ -36,3 +36,8 @@ func (mp *MemoryProvider) Subscribe(opts pubsub.HandlerOptions, h pubsub.MsgHand
 	}
 	return
 }
+
+func (mp *MemoryProvider) Shutdown(done chan bool) {
+	done <- true
+	return
+}

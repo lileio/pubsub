@@ -1,3 +1,4 @@
+// THIS IS AN EXPERIMENTAL DRIVER, PLEASE USE WITH CAUTION
 package kafka
 
 import (

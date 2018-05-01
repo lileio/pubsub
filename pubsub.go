@@ -26,6 +26,7 @@ func SetClient(cli *Client) {
 type Provider interface {
 	Publish(ctx context.Context, topic string, m *Msg) error
 	Subscribe(opts HandlerOptions, handler MsgHandler)
+	Shutdown(chan bool)
 }
 
 // Subscriber is a service that listens to events and registers handlers
