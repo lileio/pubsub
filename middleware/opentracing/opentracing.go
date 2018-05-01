@@ -2,10 +2,12 @@ package opentracing
 
 import (
 	"context"
+	"runtime/debug"
 
 	"github.com/lileio/pubsub"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/ext"
+	"github.com/opentracing/opentracing-go/log"
 )
 
 var (
@@ -77,7 +79,14 @@ func (o Middleware) PublisherMsgInterceptor(serviceName string, next pubsub.Publ
 			opentracing.TextMap,
 			opentracing.TextMapCarrier(m.Metadata))
 
-		return next(ctx, topic, m)
+		err := next(ctx, topic, m)
+		if err != nil {
+			span.SetTag("error", "true")
+			span.LogFields(log.String("err", err.Error()))
+			span.LogFields(log.String("stacktrace", string(debug.Stack())))
+		}
+
+		return err
 	}
 }
 

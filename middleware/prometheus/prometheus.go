@@ -25,7 +25,7 @@ var (
 	publishDurationsHistogram = prometheus.NewHistogram(prometheus.HistogramOpts{
 		Name:    "pubsub_publish_durations_histogram_seconds",
 		Help:    "PubSub publishing latency distributions.",
-		Buckets: prometheus.ExponentialBuckets(0.01, 1.2, 20),
+		Buckets: prometheus.ExponentialBuckets(0.01, 1.5, 10),
 	})
 
 	pubsubHandled = prometheus.NewCounterVec(
@@ -43,7 +43,7 @@ var (
 	subscribeDurationsHistogram = prometheus.NewHistogramVec(prometheus.HistogramOpts{
 		Name:    "pubsub_subscribe_durations_histogram_seconds",
 		Help:    "PubSub subscriber latency distributions.",
-		Buckets: prometheus.ExponentialBuckets(0.01, 1.2, 40),
+		Buckets: prometheus.ExponentialBuckets(0.05, 1.5, 20),
 	}, []string{"topic", "service"})
 )
 

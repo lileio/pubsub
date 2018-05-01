@@ -2,7 +2,6 @@ package google
 
 import (
 	"context"
-	"strconv"
 	"sync"
 	"time"
 
@@ -62,7 +61,7 @@ func (g *GoogleCloud) Subscribe(opts ps.HandlerOptions, h ps.MsgHandler) {
 func (g *GoogleCloud) subscribe(opts ps.HandlerOptions, h ps.MsgHandler, ready chan<- bool) {
 	go func() {
 		var err error
-		subName := opts.Topic + "--" + opts.ServiceName + "." + opts.Name
+		subName := opts.ServiceName + "." + opts.Name + "--" + opts.Topic
 		sub := g.client.Subscription(subName)
 
 		t, err := g.getTopic(context.Background(), opts.Topic)
@@ -103,8 +102,6 @@ func (g *GoogleCloud) subscribe(opts ps.HandlerOptions, h ps.MsgHandler, ready c
 		for {
 			err = sub.Receive(context.Background(), func(ctx context.Context, m *pubsub.Message) {
 				b.Reset()
-
-				logrus.Debugf("Recevied on topic %s, id: %s", opts.Topic, m.ID)
 				msg := ps.Msg{
 					ID:       m.ID,
 					Metadata: m.Attributes,
@@ -119,35 +116,6 @@ func (g *GoogleCloud) subscribe(opts ps.HandlerOptions, h ps.MsgHandler, ready c
 
 				err = h(ctx, msg)
 				if err != nil {
-					logrus.Errorf("couldn't process msg with id: %s, err: %s", m.ID, err)
-
-					attempts := 0
-					if m.Attributes["attempts"] != "" {
-						i, _ := strconv.Atoi(m.Attributes["attempts"])
-						attempts = i
-
-					}
-
-					if attempts >= opts.Retries-1 {
-						logrus.Debugf("Maximum retries reached on topic %s msg id: %s",
-							opts.Topic, m.ID)
-
-						m.Attributes["attempts"] = strconv.FormatInt(int64(attempts+1), 10)
-						g.Publish(ctx, opts.Topic+"-failures", &ps.Msg{
-							Data:     m.Data,
-							Metadata: m.Attributes,
-						})
-
-						m.Ack()
-					}
-
-					m.Attributes["attempts"] = strconv.FormatInt(int64(attempts+1), 10)
-					g.Publish(ctx, opts.Topic, &ps.Msg{
-						Data:     m.Data,
-						Metadata: m.Attributes,
-					})
-
-					m.Ack()
 					return
 				}
 

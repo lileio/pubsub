@@ -38,9 +38,6 @@ type HandlerOptions struct {
 	// Concurrency sets the maximum number of msgs to be run concurrently
 	// default: 20
 	Concurrency int
-	// Retries is the amount of times to retry before sending to a dead queue
-	// default: 3
-	Retries int
 	// Auto Ack the message automatically if return err == nil
 	AutoAck bool
 	// Decode JSON objects from pubsub instead of protobuf
@@ -65,11 +62,6 @@ func (c Client) On(opts HandlerOptions) {
 	// Set some default options
 	if opts.Deadline == 0 {
 		opts.Deadline = 10 * time.Second
-	}
-
-	// Set some default options
-	if opts.Retries == 0 {
-		opts.Retries = 3
 	}
 
 	// Set some default concurrency
