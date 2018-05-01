@@ -5,6 +5,8 @@ import (
 	"time"
 
 	"github.com/lileio/pubsub"
+	opentracing "github.com/opentracing/opentracing-go"
+	zipkintracing "github.com/openzipkin/zipkin-go-opentracing"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
@@ -34,14 +36,35 @@ func (o Middleware) SubscribeInterceptor(opts pubsub.HandlerOptions, next pubsub
 		err := next(ctx, m)
 		elapsed := time.Now().Sub(start)
 
-		o.Logger.Debug("Processed PubSub Msg",
+		var traceID string
+		span := opentracing.SpanFromContext(ctx)
+		if span != nil {
+			zs, ok := span.Context().(zipkintracing.SpanContext)
+			if ok {
+				traceID = zs.TraceID.ToHex()
+			}
+		}
+
+		fields := []zapcore.Field{
 			zap.String("component", "pubsub"),
-			zap.String("id", m.ID),
 			zap.String("topic", opts.Topic),
 			zap.String("handler", opts.Name),
 			zap.Duration("duration", elapsed),
 			zap.Error(err),
+		}
+
+		if m.ID != "" {
+			fields = append(fields, zap.String("id", m.ID))
+		}
+
+		if traceID != "" {
+			fields = append(fields, zap.String("trace-id", traceID))
+		}
+
+		o.Logger.Debug("Processed PubSub Msg",
+			fields...,
 		)
+
 		return err
 	}
 }

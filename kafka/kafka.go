@@ -33,11 +33,7 @@ func (p *Provider) Publish(ctx context.Context, topic string, m *pubsub.Msg) err
 		return err
 	}
 
-	u1, err := uuid.NewV1()
-	if err != nil {
-		return err
-	}
-
+	u1 := uuid.NewV1()
 	return w.WriteMessages(ctx, kafka.Message{
 		Key:   u1.Bytes(),
 		Value: m.Data,
@@ -67,7 +63,6 @@ func (p *Provider) Subscribe(opts pubsub.HandlerOptions, h pubsub.MsgHandler) {
 	}
 
 	go func() {
-
 		for {
 			ctx := context.Background()
 			m, err := r.FetchMessage(ctx)
