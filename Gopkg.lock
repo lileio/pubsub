@@ -39,6 +39,12 @@
   version = "v1.1.0"
 
 [[projects]]
+  branch = "master"
+  name = "github.com/dropbox/godropbox"
+  packages = ["errors"]
+  revision = "2c3c8cf00bc05b343eaa96e3a52d8f6ca1a0964d"
+
+[[projects]]
   name = "github.com/eapache/go-resiliency"
   packages = ["breaker"]
   revision = "6800482f2c813e689c88b7ed3282262385011890"
@@ -239,12 +245,6 @@
   revision = "b9fe2a626ad790b4169811629601c42d2eeeb7cc"
 
 [[projects]]
-  branch = "master"
-  name = "github.com/siddontang/go"
-  packages = ["log"]
-  revision = "cb568a3e5cc06256f91a2da5a87455f717eb33f4"
-
-[[projects]]
   name = "github.com/sirupsen/logrus"
   packages = ["."]
   revision = "d682213848ed68c0a260ca37d6dd5ace8423f5ba"
@@ -432,6 +432,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "e1d0eed11c43d67bfa6f46a13ffc6cbb489f9e18563f7b44ca69de2e9a653a15"
+  inputs-digest = "105ef139bdd23d225e9269a6ac8398539520aa949479df34e63d59d68ae060d7"
   solver-name = "gps-cdcl"
   solver-version = 1
