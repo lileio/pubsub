@@ -2,13 +2,14 @@ package memory
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/lileio/pubsub"
-	"github.com/siddontang/go/log"
 )
 
 type MemoryProvider struct {
-	Msgs map[string][]*pubsub.Msg
+	Msgs         map[string][]*pubsub.Msg
+	ErrorHandler func(err error)
 }
 
 func (mp *MemoryProvider) Publish(ctx context.Context, topic string, m *pubsub.Msg) error {
@@ -26,7 +27,11 @@ func (mp *MemoryProvider) Subscribe(opts pubsub.HandlerOptions, h pubsub.MsgHand
 		err := h(context.Background(), *v)
 
 		if err != nil {
-			log.Error(err)
+			if mp.ErrorHandler != nil {
+				mp.ErrorHandler(err)
+			} else {
+				fmt.Print(err.Error())
+			}
 		}
 	}
 	return
