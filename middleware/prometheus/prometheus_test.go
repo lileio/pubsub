@@ -1,4 +1,4 @@
-package pubsubzap
+package prometheus
 
 import (
 	"context"
