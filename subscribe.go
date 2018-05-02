@@ -58,6 +58,10 @@ func (c Client) On(opts HandlerOptions) {
 		panic("lile pubsub: name must be set")
 	}
 
+	if opts.ServiceName == "" {
+		opts.ServiceName = c.ServiceName
+	}
+
 	if opts.Handler == nil {
 		panic("lile pubsub: handler cannot be nil")
 	}
