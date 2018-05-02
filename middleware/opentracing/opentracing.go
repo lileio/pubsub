@@ -44,17 +44,26 @@ func (o Middleware) SubscribeInterceptor(opts pubsub.HandlerOptions, next pubsub
 			opentracing.TextMap,
 			opentracing.TextMapCarrier(m.Metadata))
 
-		if err == nil {
-			handlerSpan := tracer.StartSpan(
-				opts.Name,
-				consumerOption{clientContext: spanContext},
-				pubsubTag,
-			)
-			defer handlerSpan.Finish()
-			ctx = opentracing.ContextWithSpan(ctx, handlerSpan)
+		if err != nil {
+			return next(ctx, m)
 		}
 
-		return next(ctx, m)
+		handlerSpan := tracer.StartSpan(
+			opts.Name,
+			consumerOption{clientContext: spanContext},
+			pubsubTag,
+		)
+		defer handlerSpan.Finish()
+
+		ctx = opentracing.ContextWithSpan(ctx, handlerSpan)
+		err = next(ctx, m)
+
+		if err != nil {
+			handlerSpan.SetTag("error", "true")
+			handlerSpan.LogFields(log.String("err", err.Error()))
+		}
+
+		return err
 	}
 }
 
