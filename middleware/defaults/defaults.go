@@ -10,8 +10,8 @@ import (
 
 // Middleware is a helper to import the default middleware for pubsub
 var Middleware = []pubsub.Middleware{
-	logrus.Middleware{},
 	recover.Middleware{},
 	opentracing.Middleware{},
+	logrus.Middleware{},
 	prometheus.Middleware{},
 }
