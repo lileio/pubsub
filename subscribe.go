@@ -3,28 +3,27 @@ package pubsub
 import (
 	"context"
 	"encoding/json"
-	"os"
-	"os/signal"
 	"reflect"
-	"syscall"
 	"time"
 
 	"github.com/golang/protobuf/proto"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 )
+
+var wait = make(chan bool)
 
 // Subscribe starts a run loop with a Subscriber that listens to topics and
 // waits for a syscall.SIGINT or syscall.SIGTERM
 func Subscribe(s Subscriber) {
 	s.Setup(client)
+	<-wait
+}
 
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-	<-sigs
-
-	done := make(chan bool)
-	client.Provider.Shutdown(done)
-	<-done
+func Shutdown() {
+	logrus.Infof("pubsub: Gracefully shutting down pubsub subscribers")
+	wait <- true
+	client.Provider.Shutdown()
 }
 
 // HandlerOptions defines the options for a subscriber handler

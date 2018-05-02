@@ -20,9 +20,10 @@ var (
 
 // GoogleCloud provides google cloud pubsub
 type GoogleCloud struct {
-	client *pubsub.Client
-	topics map[string]*pubsub.Topic
-	subs   map[string]context.CancelFunc
+	client   *pubsub.Client
+	topics   map[string]*pubsub.Topic
+	subs     map[string]context.CancelFunc
+	shutdown bool
 }
 
 // NewGoogleCloud creates a new GoogleCloud instace for a project
@@ -61,7 +62,9 @@ func (g *GoogleCloud) Subscribe(opts ps.HandlerOptions, h ps.MsgHandler) {
 }
 
 // Shutdown shuts down all subscribers gracefully
-func (g *GoogleCloud) Shutdown(done chan bool) {
+func (g *GoogleCloud) Shutdown() {
+	g.shutdown = true
+
 	var wg sync.WaitGroup
 	for k, v := range g.subs {
 		wg.Add(1)
@@ -72,7 +75,6 @@ func (g *GoogleCloud) Shutdown(done chan bool) {
 		}(v)
 	}
 	wg.Wait()
-	done <- true
 	return
 }
 
@@ -121,6 +123,10 @@ func (g *GoogleCloud) subscribe(opts ps.HandlerOptions, h ps.MsgHandler, ready c
 
 		// Listen to messages and call the MsgHandler
 		for {
+			if g.shutdown {
+				break
+			}
+
 			cctx, cancel := context.WithCancel(context.Background())
 			err = sub.Receive(cctx, func(ctx context.Context, m *pubsub.Message) {
 				b.Reset()

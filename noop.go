@@ -18,7 +18,6 @@ func (np NoopProvider) Subscribe(opts HandlerOptions, h MsgHandler) {
 }
 
 // Shutdown shutsdown immediately
-func (np NoopProvider) Shutdown(done chan bool) {
-	done <- true
+func (np NoopProvider) Shutdown() {
 	return
 }
