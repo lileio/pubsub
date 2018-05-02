@@ -2,15 +2,23 @@ package pubsub
 
 import (
 	"context"
-	"time"
 )
 
+// NoopProvider is a simple provider that does nothing, for testing, defaults
 type NoopProvider struct{}
 
-func (np NoopProvider) Publish(ctx context.Context, topic string, b []byte) error {
+// Publish does nothing
+func (np NoopProvider) Publish(ctx context.Context, topic string, m *Msg) error {
 	return nil
 }
 
-func (np NoopProvider) Subscribe(topic, subscriberName string, h MsgHandler, deadline time.Duration, autoAck bool) {
+// Subscribe does nothing
+func (np NoopProvider) Subscribe(opts HandlerOptions, h MsgHandler) {
+	return
+}
+
+// Shutdown shutsdown immediately
+func (np NoopProvider) Shutdown(done chan bool) {
+	done <- true
 	return
 }
