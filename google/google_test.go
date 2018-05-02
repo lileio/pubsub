@@ -29,7 +29,9 @@ func TestGooglePublishSubscribe(t *testing.T) {
 		return
 	}
 
-	sub := "lile_" + uuid.NewV1().String()
+	u1 := uuid.Must(uuid.NewV4())
+	sub := "lile_" + u1.String()
+
 	ps, err := NewGoogleCloud(os.Getenv("GCLOUD_PROJECT"))
 	assert.Nil(t, err)
 	assert.NotNil(t, ps)

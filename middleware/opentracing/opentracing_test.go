@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	gw "github.com/grpc-ecosystem/grpc-gateway/examples/examplepb"
 	"github.com/lileio/pubsub"
 	"github.com/lileio/pubsub/memory"
+	"github.com/lileio/pubsub/test"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/log"
 	zipkintracer "github.com/openzipkin/zipkin-go-opentracing"
@@ -18,8 +18,8 @@ type TestSubscriber struct {
 	T    *testing.T
 }
 
-func (ts *TestSubscriber) DoSomething(ctx context.Context, t *gw.ABitOfEverything, msg *pubsub.Msg) error {
-	// assert.NotNil(t, opentracing.SpanFromContext(ctx))
+func (ts *TestSubscriber) DoSomething(ctx context.Context, t *test.Account, msg *pubsub.Msg) error {
+	assert.NotNil(ts.T, opentracing.SpanFromContext(ctx))
 	return nil
 }
 
@@ -59,8 +59,8 @@ func TestOpentracingMiddleware(t *testing.T) {
 		Middleware:  []pubsub.Middleware{m1},
 	}
 
-	ps := gw.ABitOfEverything{
-		StringValue: "strprefix/foo",
+	ps := test.Account{
+		Name: "pubsub",
 	}
 
 	err = c.Publish(ctx, "test_topic", &ps, false)

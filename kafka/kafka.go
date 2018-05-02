@@ -34,7 +34,11 @@ func (p *Provider) Publish(ctx context.Context, topic string, m *pubsub.Msg) err
 		return err
 	}
 
-	u1 := uuid.NewV1()
+	u1, err := uuid.NewV1()
+	if err != nil {
+		return err
+	}
+
 	return w.WriteMessages(ctx, kafka.Message{
 		Key:   u1.Bytes(),
 		Value: m.Data,

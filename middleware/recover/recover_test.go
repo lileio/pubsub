@@ -5,7 +5,7 @@ import (
 	"errors"
 	"testing"
 
-	gw "github.com/grpc-ecosystem/grpc-gateway/examples/examplepb"
+	"github.com/lileio/lile/test"
 	"github.com/lileio/pubsub"
 	"github.com/lileio/pubsub/memory"
 	"github.com/stretchr/testify/assert"
@@ -16,7 +16,7 @@ type TestSubscriber struct {
 	T    *testing.T
 }
 
-func (ts *TestSubscriber) DoSomething(ctx context.Context, t *gw.ABitOfEverything, msg *pubsub.Msg) error {
+func (ts *TestSubscriber) DoSomething(ctx context.Context, t *test.Account, msg *pubsub.Msg) error {
 	assert.True(ts.T, len(msg.Data) > 0)
 	panic(errors.New("ahhhhhhhh"))
 	return nil
@@ -45,8 +45,8 @@ func TestRecoverMiddleware(t *testing.T) {
 		Middleware:  []pubsub.Middleware{m1},
 	}
 
-	ps := gw.ABitOfEverything{
-		StringValue: "strprefix/foo",
+	ps := test.Account{
+		Name: "smth",
 	}
 
 	err := c.Publish(context.Background(), "test_topic", &ps, false)

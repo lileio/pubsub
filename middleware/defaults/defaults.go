@@ -1,4 +1,4 @@
-package defaultMiddleware
+package defaults
 
 import (
 	"github.com/lileio/pubsub"
