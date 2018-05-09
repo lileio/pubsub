@@ -179,13 +179,13 @@ func (g *GoogleCloud) getTopic(ctx context.Context, name string) (*pubsub.Topic,
 
 	var err error
 	t := g.client.Topic(name)
-	ok, err := t.Exists(ctx)
+	ok, err := t.Exists(context.Background())
 	if err != nil {
 		return nil, err
 	}
 
 	if !ok {
-		t, err = g.client.CreateTopic(ctx, name)
+		t, err = g.client.CreateTopic(context.Background(), name)
 		if err != nil {
 			return nil, err
 		}
