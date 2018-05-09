@@ -6,11 +6,11 @@ import (
 	"time"
 
 	"cloud.google.com/go/pubsub"
+	"github.com/dropbox/godropbox/errors"
 	"github.com/jpillora/backoff"
+	"github.com/lileio/logr"
 	ps "github.com/lileio/pubsub"
 
-	opentracing "github.com/opentracing/opentracing-go"
-	"github.com/opentracing/opentracing-go/ext"
 	"github.com/sirupsen/logrus"
 )
 
@@ -42,17 +42,24 @@ func NewGoogleCloud(projectID string) (*GoogleCloud, error) {
 
 // Publish implements Publish
 func (g *GoogleCloud) Publish(ctx context.Context, topic string, m *ps.Msg) error {
-	t, err := g.getTopic(ctx, topic)
+	t, err := g.getTopic(topic)
 	if err != nil {
 		return err
 	}
 
+	logr.WithCtx(ctx).Debug("Google Pubsub: Publishing")
 	res := t.Publish(context.Background(), &pubsub.Message{
 		Data:       m.Data,
 		Attributes: m.Metadata,
 	})
 
 	_, err = res.Get(context.Background())
+	if err != nil {
+		logr.WithCtx(ctx).Error(errors.Wrap(err, "publish get failed"))
+	} else {
+		logr.WithCtx(ctx).Debug("Google Pubsub: Publish confirmed")
+	}
+
 	return err
 }
 
@@ -166,12 +173,9 @@ func (g *GoogleCloud) subscribe(opts ps.HandlerOptions, h ps.MsgHandler, ready c
 	}()
 }
 
-func (g *GoogleCloud) getTopic(ctx context.Context, name string) (*pubsub.Topic, error) {
+func (g *GoogleCloud) getTopic(name string) (*pubsub.Topic, error) {
 	mutex.Lock()
 	defer mutex.Unlock()
-
-	span := spanFromContext(ctx, "fetch topic")
-	defer span.Finish()
 
 	if g.topics[name] != nil {
 		return g.topics[name], nil
@@ -197,23 +201,10 @@ func (g *GoogleCloud) getTopic(ctx context.Context, name string) (*pubsub.Topic,
 }
 
 func (g *GoogleCloud) deleteTopic(name string) error {
-	t, err := g.getTopic(context.Background(), name)
+	t, err := g.getTopic(name)
 	if err != nil {
 		return err
 	}
 
 	return t.Delete(context.Background())
-}
-
-func spanFromContext(ctx context.Context, name string) opentracing.Span {
-	var parentCtx opentracing.SpanContext
-	if parent := opentracing.SpanFromContext(ctx); parent != nil {
-		parentCtx = parent.Context()
-	}
-
-	return opentracing.GlobalTracer().StartSpan(
-		name,
-		opentracing.ChildOf(parentCtx),
-		ext.SpanKindProducer,
-	)
 }
