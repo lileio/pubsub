@@ -47,7 +47,7 @@ func (g *GoogleCloud) Publish(ctx context.Context, topic string, m *ps.Msg) erro
 		return err
 	}
 
-	res := t.Publish(ctx, &pubsub.Message{
+	res := t.Publish(context.Background(), &pubsub.Message{
 		Data:       m.Data,
 		Attributes: m.Metadata,
 	})
