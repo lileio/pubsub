@@ -91,7 +91,7 @@ func (g *GoogleCloud) subscribe(opts ps.HandlerOptions, h ps.MsgHandler, ready c
 		subName := opts.ServiceName + "." + opts.Name + "--" + opts.Topic
 		sub := g.client.Subscription(subName)
 
-		t, err := g.getTopic(context.Background(), opts.Topic)
+		t, err := g.getTopic(opts.Topic)
 		if err != nil {
 			logrus.Panicf("Can't fetch topic: %s", err.Error())
 		}
