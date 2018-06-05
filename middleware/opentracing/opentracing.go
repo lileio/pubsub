@@ -44,7 +44,7 @@ func (o Middleware) SubscribeInterceptor(opts pubsub.HandlerOptions, next pubsub
 			opentracing.TextMap,
 			opentracing.TextMapCarrier(m.Metadata))
 
-		if err != nil {
+		if err != nil && err != opentracing.ErrSpanContextNotFound {
 			return next(ctx, m)
 		}
 
