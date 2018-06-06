@@ -151,6 +151,7 @@ func (g *GoogleCloud) subscribe(opts ps.HandlerOptions, h ps.MsgHandler, ready c
 
 				err = h(ctx, msg)
 				if err != nil {
+					m.Nack()
 					return
 				}
 

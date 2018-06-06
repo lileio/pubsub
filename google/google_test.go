@@ -39,7 +39,7 @@ func TestGooglePublishSubscribe(t *testing.T) {
 	done := make(chan bool)
 
 	topic := "lile_topic"
-	_, err = ps.getTopic(context.Background(), topic)
+	_, err = ps.getTopic(topic)
 	assert.Nil(t, err)
 
 	opts := pubsub.HandlerOptions{

@@ -15,7 +15,7 @@ func (o Middleware) SubscribeInterceptor(opts pubsub.HandlerOptions, next pubsub
 	return func(ctx context.Context, m pubsub.Msg) (err error) {
 		defer func() {
 			if r := recover(); r != nil {
-				err = errors.Wrap(err, "subscribe panic")
+				err = errors.Wrap(r.(error), "subscribe panic \n")
 			}
 		}()
 		err = next(ctx, m)
@@ -28,7 +28,7 @@ func (o Middleware) PublisherMsgInterceptor(serviceName string, next pubsub.Publ
 	return func(ctx context.Context, topic string, m *pubsub.Msg) (err error) {
 		defer func() {
 			if r := recover(); r != nil {
-				err = errors.Wrap(err, "publish panic")
+				err = errors.Wrap(r.(error), "publish panic")
 			}
 		}()
 		err = next(ctx, topic, m)

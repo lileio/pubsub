@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/dropbox/godropbox/errors"
 	"github.com/lileio/pubsub"
 	opentracing "github.com/opentracing/opentracing-go"
 	zipkintracing "github.com/openzipkin/zipkin-go-opentracing"
@@ -37,7 +38,12 @@ func (o Middleware) SubscribeInterceptor(opts pubsub.HandlerOptions, next pubsub
 		}
 
 		if err != nil {
-			fields["err"] = err
+			de, ok := err.(errors.DropboxError)
+			if ok {
+				fields["err"] = de.GetMessage()
+			} else {
+				fields["err"] = err
+			}
 		}
 
 		if m.ID != "" {
@@ -67,7 +73,12 @@ func (o Middleware) PublisherMsgInterceptor(serviceName string, next pubsub.Publ
 		}
 
 		if err != nil {
-			fields["err"] = err
+			de, ok := err.(errors.DropboxError)
+			if ok {
+				fields["err"] = de.GetMessage()
+			} else {
+				fields["err"] = err
+			}
 		}
 
 		logrus.WithFields(fields).Debug("Published PubSub Msg")
