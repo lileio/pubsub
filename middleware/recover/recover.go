@@ -20,7 +20,7 @@ func (o Middleware) SubscribeInterceptor(opts pubsub.HandlerOptions, next pubsub
 	return func(ctx context.Context, m pubsub.Msg) (err error) {
 		defer func() {
 			if r := recover(); r != nil {
-				err = recoverFrom(r, "pubsub: subsciber panic \n", o.RecoveryHandlerFunc)
+				err = recoverFrom(r, "pubsub: subscriber panic \n", o.RecoveryHandlerFunc)
 			}
 		}()
 		err = next(ctx, m)

@@ -1,14 +1,14 @@
-package recover
+package defaults
 
 import (
 	"context"
 	"errors"
-	"fmt"
 	"testing"
 
-	"github.com/lileio/lile/test"
+	"github.com/lileio/logr"
 	"github.com/lileio/pubsub"
 	"github.com/lileio/pubsub/memory"
+	"github.com/lileio/pubsub/test"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -19,7 +19,7 @@ type TestSubscriber struct {
 
 func (ts *TestSubscriber) DoSomething(ctx context.Context, t *test.Account, msg *pubsub.Msg) error {
 	assert.True(ts.T, len(msg.Data) > 0)
-	panic(errors.New("ahhhhhhhh"))
+	panic(errors.New("ahhhh"))
 	return nil
 }
 
@@ -32,23 +32,17 @@ func (ts *TestSubscriber) Setup(c *pubsub.Client) {
 	})
 }
 
-func TestRecoverMiddleware(t *testing.T) {
-	m1 := Middleware{}
-
-	m := &memory.MemoryProvider{
-		ErrorHandler: func(err error) {
-			fmt.Printf("err = %+v\n", err)
-			assert.NotNil(t, err)
-		},
-	}
+func TestDefaultMiddleware(t *testing.T) {
+	logr.SetLevelFromEnv()
+	m := &memory.MemoryProvider{ErrorHandler: func(err error) {}}
 	c := &pubsub.Client{
 		ServiceName: "test",
 		Provider:    m,
-		Middleware:  []pubsub.Middleware{m1},
+		Middleware:  Middleware,
 	}
 
 	ps := test.Account{
-		Name: "smth",
+		Name: "pubsub",
 	}
 
 	err := c.Publish(context.Background(), "test_topic", &ps, false)
