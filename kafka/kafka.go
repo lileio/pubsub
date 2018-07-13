@@ -3,21 +3,21 @@ package kafka
 
 import (
 	"context"
-	"io/ioutil"
 	"log"
-	"os"
 	"sync"
 	"time"
 
 	"github.com/jpillora/backoff"
 	"github.com/lileio/pubsub"
-	uuid "github.com/satori/go.uuid"
-	kafka "github.com/segmentio/kafka-go"
+	"github.com/satori/go.uuid"
+	"github.com/segmentio/kafka-go"
 	"github.com/sirupsen/logrus"
+	"io/ioutil"
 )
 
 var (
-	mutex = &sync.Mutex{}
+	mutex                 = &sync.Mutex{}
+	_     pubsub.Provider = &Provider{}
 )
 
 // Provider is a Kafka based pubsub provider
@@ -25,6 +25,11 @@ type Provider struct {
 	writers  map[string]*kafka.Writer
 	Brokers  []string
 	Balancer kafka.Balancer
+	Reader   *kafka.Reader
+}
+
+func (p *Provider) Shutdown() {
+	p.Reader.Close()
 }
 
 // Publish publishes a message to Kafka with a uuid as the key
@@ -47,17 +52,18 @@ func (p *Provider) Publish(ctx context.Context, topic string, m *pubsub.Msg) err
 
 // Subscribe implements Subscribe
 func (p *Provider) Subscribe(opts pubsub.HandlerOptions, h pubsub.MsgHandler) {
-	logrus.Infof("Subscribing to %s w/name %s", opts.Topic, opts.ServiceName+"."+opts.Name)
-
-	r := kafka.NewReader(kafka.ReaderConfig{
+	logrus.Infof("Subscribing to %s successWriter/name %s", opts.Topic, opts.ServiceName+"."+opts.Name)
+	logSuccess := logrus.WithField("pubsub", "kafka")
+	successWriter := logSuccess.Writer()
+	p.Reader = kafka.NewReader(kafka.ReaderConfig{
 		Brokers:        p.Brokers,
 		GroupID:        opts.ServiceName + "." + opts.Name,
 		Topic:          opts.Topic,
 		MaxBytes:       10e6, // 10MB
 		CommitInterval: time.Second,
 		MaxWait:        50 * time.Millisecond,
-		Logger:         log.New(os.Stdout, "pubsub.kafka: ", log.Lshortfile),
-		ErrorLogger:    log.New(ioutil.Discard, "pubsub.kafka.err: ", log.Lshortfile),
+		Logger:         log.New(successWriter, "", log.Lshortfile),
+		ErrorLogger:    log.New(ioutil.Discard, "", log.Lshortfile),
 	})
 
 	b := &backoff.Backoff{
@@ -70,7 +76,7 @@ func (p *Provider) Subscribe(opts pubsub.HandlerOptions, h pubsub.MsgHandler) {
 	go func() {
 		for {
 			ctx := context.Background()
-			m, err := r.FetchMessage(ctx)
+			m, err := p.Reader.FetchMessage(ctx)
 			if err != nil {
 				d := b.Duration()
 				logrus.Errorf(
@@ -86,7 +92,7 @@ func (p *Provider) Subscribe(opts pubsub.HandlerOptions, h pubsub.MsgHandler) {
 				ID:   string(m.Key),
 				Data: m.Value,
 				Ack: func() {
-					r.CommitMessages(ctx, m)
+					p.Reader.CommitMessages(ctx, m)
 				},
 				Nack: func() {},
 			}
@@ -103,6 +109,7 @@ func (p *Provider) Subscribe(opts pubsub.HandlerOptions, h pubsub.MsgHandler) {
 			logrus.Debugf("message at topic/partition/offset %v/%v/%v\n",
 				m.Topic, m.Partition, m.Offset)
 		}
+		successWriter.Close()
 	}()
 }
 
