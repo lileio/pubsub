@@ -10,6 +10,7 @@ import (
 	"github.com/jpillora/backoff"
 	"github.com/lileio/logr"
 	ps "github.com/lileio/pubsub"
+	"golang.org/x/sync/semaphore"
 
 	"github.com/sirupsen/logrus"
 )
@@ -124,9 +125,14 @@ func (g *GoogleCloud) subscribe(opts ps.HandlerOptions, h ps.MsgHandler, ready c
 		}
 
 		sub.ReceiveSettings = pubsub.ReceiveSettings{
-			MaxOutstandingMessages: opts.Concurrency,
+			MaxOutstandingMessages: opts.Concurrency * 10,
 			MaxExtension:           opts.Deadline,
 		}
+
+		// create a semaphore, this is because Google PubSub will spam
+		// your service if you can't process a message
+		// and will also not handle
+		sem := semaphore.NewWeighted(int64(opts.Concurrency))
 
 		// Listen to messages and call the MsgHandler
 		for {
@@ -136,6 +142,15 @@ func (g *GoogleCloud) subscribe(opts ps.HandlerOptions, h ps.MsgHandler, ready c
 
 			cctx, cancel := context.WithCancel(context.Background())
 			err = sub.Receive(cctx, func(ctx context.Context, m *pubsub.Message) {
+				if serr := sem.Acquire(ctx, 1); err != nil {
+					logrus.Errorf(
+						"pubsub: Failed to acquire worker semaphore: %v",
+						serr,
+					)
+					return
+				}
+				defer sem.Release(1)
+
 				b.Reset()
 				msg := ps.Msg{
 					ID:       m.ID,
