@@ -126,7 +126,7 @@ func (g *GoogleCloud) subscribe(opts ps.HandlerOptions, h ps.MsgHandler, ready c
 
 		sub.ReceiveSettings = pubsub.ReceiveSettings{
 			MaxOutstandingMessages: opts.Concurrency * 10,
-			MaxExtension:           opts.Deadline,
+			MaxExtension:           opts.Deadline * 20,
 		}
 
 		// create a semaphore, this is because Google PubSub will spam
