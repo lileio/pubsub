@@ -142,7 +142,7 @@ func (g *GoogleCloud) subscribe(opts ps.HandlerOptions, h ps.MsgHandler, ready c
 
 			cctx, cancel := context.WithCancel(context.Background())
 			err = sub.Receive(cctx, func(ctx context.Context, m *pubsub.Message) {
-				if serr := sem.Acquire(ctx, 1); err != nil {
+				if serr := sem.Acquire(ctx, 1); serr != nil {
 					logrus.Errorf(
 						"pubsub: Failed to acquire worker semaphore: %v",
 						serr,
