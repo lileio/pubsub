@@ -7,10 +7,10 @@ import (
 	"testing"
 	"time"
 
+	uuid "github.com/gofrs/uuid"
 	"github.com/golang/protobuf/proto"
 	"github.com/lileio/lile/test"
 	"github.com/lileio/pubsub"
-	uuid "github.com/satori/go.uuid"
 	"github.com/stretchr/testify/assert"
 )
 

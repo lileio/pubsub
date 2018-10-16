@@ -7,12 +7,13 @@ import (
 	"sync"
 	"time"
 
+	"io/ioutil"
+
+	"github.com/gofrs/uuid"
 	"github.com/jpillora/backoff"
 	"github.com/lileio/pubsub"
-	"github.com/satori/go.uuid"
 	"github.com/segmentio/kafka-go"
 	"github.com/sirupsen/logrus"
-	"io/ioutil"
 )
 
 var (
