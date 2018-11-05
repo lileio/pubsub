@@ -161,10 +161,10 @@ func (g *GoogleCloud) subscribe(opts ps.HandlerOptions, h ps.MsgHandler, ready c
 
 				err = h(ctx, msg)
 				if err != nil {
-					go func() {
-						<-time.NewTimer(2 * time.Minute).C
+					go func(m *pubsub.Message) {
+						<-time.NewTimer(5 * time.Minute).C
 						m.Nack()
-					}()
+					}(m)
 					return
 				}
 
