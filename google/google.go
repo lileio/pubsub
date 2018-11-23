@@ -148,9 +148,10 @@ func (g *GoogleCloud) subscribe(opts ps.HandlerOptions, h ps.MsgHandler, ready c
 
 				b.Reset()
 				msg := ps.Msg{
-					ID:       m.ID,
-					Metadata: m.Attributes,
-					Data:     m.Data,
+					ID:          m.ID,
+					Metadata:    m.Attributes,
+					Data:        m.Data,
+					PublishTime: &m.PublishTime,
 					Ack: func() {
 						m.Ack()
 					},
