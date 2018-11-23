@@ -4,6 +4,7 @@ package pubsub
 
 import (
 	"context"
+	"time"
 )
 
 var (
@@ -39,9 +40,10 @@ type Subscriber interface {
 
 // Msg is a lile representation of a pub sub message
 type Msg struct {
-	ID       string
-	Metadata map[string]string
-	Data     []byte
+	ID          string
+	Metadata    map[string]string
+	Data        []byte
+	PublishTime *time.Time
 
 	Ack  func()
 	Nack func()
