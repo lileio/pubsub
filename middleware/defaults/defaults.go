@@ -2,6 +2,7 @@ package defaults
 
 import (
 	"github.com/lileio/pubsub"
+	"github.com/lileio/pubsub/middleware/audit"
 	"github.com/lileio/pubsub/middleware/logrus"
 	"github.com/lileio/pubsub/middleware/opentracing"
 	"github.com/lileio/pubsub/middleware/prometheus"
@@ -20,6 +21,7 @@ var Middleware = []pubsub.Middleware{
 // you to inject a function for dealing with panics
 func MiddlewareWithRecovery(fn recover.RecoveryHandlerFunc) []pubsub.Middleware {
 	return []pubsub.Middleware{
+		audit.Middleware{},
 		opentracing.Middleware{},
 		logrus.Middleware{},
 		prometheus.Middleware{},
