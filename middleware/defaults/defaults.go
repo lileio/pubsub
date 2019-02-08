@@ -11,9 +11,10 @@ import (
 
 // Middleware is a helper to import the default middleware for pubsub
 var Middleware = []pubsub.Middleware{
-	opentracing.Middleware{},
 	logrus.Middleware{},
 	prometheus.Middleware{},
+	opentracing.Middleware{},
+	audit.Middleware{},
 	recover.Middleware{},
 }
 
@@ -21,10 +22,10 @@ var Middleware = []pubsub.Middleware{
 // you to inject a function for dealing with panics
 func MiddlewareWithRecovery(fn recover.RecoveryHandlerFunc) []pubsub.Middleware {
 	return []pubsub.Middleware{
-		audit.Middleware{},
-		opentracing.Middleware{},
 		logrus.Middleware{},
 		prometheus.Middleware{},
+		opentracing.Middleware{},
+		audit.Middleware{},
 		recover.Middleware{RecoveryHandlerFunc: fn},
 	}
 }
