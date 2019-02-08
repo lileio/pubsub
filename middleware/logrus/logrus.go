@@ -35,6 +35,7 @@ func (o Middleware) SubscribeInterceptor(opts pubsub.HandlerOptions, next pubsub
 			"topic":     opts.Topic,
 			"handler":   opts.Name,
 			"duration":  elapsed,
+			"metadata":  m.Metadata,
 		}
 
 		if err != nil {
@@ -70,6 +71,7 @@ func (o Middleware) PublisherMsgInterceptor(serviceName string, next pubsub.Publ
 			"component": "pubsub",
 			"topic":     topic,
 			"duration":  elapsed,
+			"metadata":  m.Metadata,
 		}
 
 		if err != nil {
