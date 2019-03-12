@@ -38,15 +38,6 @@ func (o Middleware) SubscribeInterceptor(opts pubsub.HandlerOptions, next pubsub
 			"metadata":  m.Metadata,
 		}
 
-		if err != nil {
-			de, ok := err.(errors.DropboxError)
-			if ok {
-				fields["err"] = de.GetMessage()
-			} else {
-				fields["err"] = err
-			}
-		}
-
 		if m.ID != "" {
 			fields["id"] = m.ID
 		}
@@ -55,7 +46,17 @@ func (o Middleware) SubscribeInterceptor(opts pubsub.HandlerOptions, next pubsub
 			fields["trace-id"] = traceID
 		}
 
-		logrus.WithFields(fields).Debug("Processed PubSub Msg")
+		if err != nil {
+			de, ok := err.(errors.DropboxError)
+			if ok {
+				fields["err"] = de.GetMessage()
+			} else {
+				fields["err"] = err
+			}
+			logrus.WithFields(fields).Error("Failed Processing PubSub Msg")
+		} else {
+			logrus.WithFields(fields).Debug("Processed PubSub Msg")
+		}
 		return err
 	}
 }
