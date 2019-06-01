@@ -2,18 +2,29 @@ package google
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 
 	"cloud.google.com/go/pubsub"
+	raw "cloud.google.com/go/pubsub/apiv1"
 	"github.com/dropbox/godropbox/errors"
+	"github.com/golang/protobuf/ptypes"
 	"github.com/jpillora/backoff"
 	"github.com/lileio/logr"
 	ps "github.com/lileio/pubsub"
-	"golang.org/x/sync/semaphore"
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
+	"google.golang.org/api/option"
+	pb "google.golang.org/genproto/googleapis/pubsub/v1"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/credentials/oauth"
 
 	"github.com/sirupsen/logrus"
 )
+
+const endPoint = "pubsub.googleapis.com:443"
 
 var (
 	mutex = &sync.Mutex{}
@@ -21,10 +32,13 @@ var (
 
 // GoogleCloud provides google cloud pubsub
 type GoogleCloud struct {
-	client   *pubsub.Client
-	topics   map[string]*pubsub.Topic
-	subs     map[string]context.CancelFunc
-	shutdown bool
+	init       sync.Once
+	client     *pubsub.Client
+	grpcClient *raw.SubscriberClient
+	grpcErr    error
+	topics     map[string]*pubsub.Topic
+	projectID  string
+	shutdown   bool
 }
 
 // NewGoogleCloud creates a new GoogleCloud instace for a project
@@ -35,9 +49,9 @@ func NewGoogleCloud(projectID string) (*GoogleCloud, error) {
 	}
 
 	return &GoogleCloud{
-		client: c,
-		topics: map[string]*pubsub.Topic{},
-		subs:   map[string]context.CancelFunc{},
+		client:    c,
+		projectID: projectID,
+		topics:    map[string]*pubsub.Topic{},
 	}, nil
 }
 
@@ -73,16 +87,16 @@ func (g *GoogleCloud) Subscribe(opts ps.HandlerOptions, h ps.MsgHandler) {
 func (g *GoogleCloud) Shutdown() {
 	g.shutdown = true
 
-	var wg sync.WaitGroup
-	for k, v := range g.subs {
-		wg.Add(1)
-		logrus.Infof("Shutting down sub for %s", k)
-		go func(c context.CancelFunc) {
-			c()
-			wg.Done()
-		}(v)
-	}
-	wg.Wait()
+	// var wg sync.WaitGroup
+	// for k, v := range g.subs {
+	// 	wg.Add(1)
+	// 	logrus.Infof("Shutting down sub for %s", k)
+	// 	go func(c context.CancelFunc) {
+	// 		c()
+	// 		wg.Done()
+	// 	}(v)
+	// }
+	// wg.Wait()
 	return
 }
 
@@ -117,17 +131,11 @@ func (g *GoogleCloud) subscribe(opts ps.HandlerOptions, h ps.MsgHandler, ready c
 		ready <- true
 
 		b := &backoff.Backoff{
-			//These are the defaults
 			Min:    200 * time.Millisecond,
 			Max:    600 * time.Second,
 			Factor: 2,
 			Jitter: true,
 		}
-
-		// create a semaphore, this is because Google PubSub will spam
-		// your service if you can't process a message
-		// and will also not handle
-		sem := semaphore.NewWeighted(int64(opts.Concurrency))
 
 		// Listen to messages and call the MsgHandler
 		for {
@@ -135,53 +143,95 @@ func (g *GoogleCloud) subscribe(opts ps.HandlerOptions, h ps.MsgHandler, ready c
 				break
 			}
 
-			cctx, cancel := context.WithCancel(context.Background())
-			err = sub.Receive(cctx, func(ctx context.Context, m *pubsub.Message) {
-				if serr := sem.Acquire(ctx, 1); serr != nil {
-					logrus.Errorf(
-						"pubsub: Failed to acquire worker semaphore: %v",
-						serr,
-					)
-					return
-				}
-				defer sem.Release(1)
+			req := &pb.PullRequest{
+				Subscription: fmt.Sprintf("/projects/%s/subscriptions/%s", g.projectID, subName),
+				MaxMessages:  int32(opts.Concurrency),
+			}
 
-				b.Reset()
-				msg := ps.Msg{
-					ID:          m.ID,
-					Metadata:    m.Attributes,
-					Data:        m.Data,
-					PublishTime: &m.PublishTime,
-					Ack: func() {
-						m.Ack()
-					},
-					Nack: func() {
-						m.Nack()
-					},
-				}
-
-				err = h(ctx, msg)
-				if err != nil {
-					return
-				}
-
-				if opts.AutoAck {
-					m.Ack()
-				}
-			})
-
+			resp, err := g.grpcClient.Pull(context.Background(), req)
 			if err != nil {
 				d := b.Duration()
 				logrus.Errorf(
-					"Subscription receive to topic %s failed, reconnecting in %v. Err: %v",
+					"pull from topic %s failed, retrying in %v. Err: %v",
 					opts.Topic, d, err,
 				)
 				time.Sleep(d)
+				continue
 			}
 
-			g.subs[subName] = cancel
+			b.Reset()
+
+			var wg sync.WaitGroup
+			for _, m := range resp.ReceivedMessages {
+				go func() {
+					wg.Add(1)
+					defer wg.Done()
+					done := make(chan struct{})
+
+					cctx, cancel := context.WithTimeout(context.Background(), opts.Deadline)
+					defer cancel()
+
+					go func(m *pb.ReceivedMessage) {
+						defer func() {
+							done <- struct{}{}
+						}()
+
+						t, _ := ptypes.Timestamp(m.Message.PublishTime)
+						msg := ps.Msg{
+							ID:          m.Message.MessageId,
+							Metadata:    m.Message.Attributes,
+							Data:        m.Message.Data,
+							PublishTime: &t,
+							Ack: func() {
+								g.AckMessage(cctx, subName, []string{m.AckId})
+							},
+							Nack: func() {
+								g.ModAckMessage(cctx, subName, []string{m.AckId}, 0)
+							},
+						}
+
+						err = h(cctx, msg)
+						if err != nil {
+							timeout := 5 * time.Minute
+							g.ModAckMessage(cctx, subName, []string{m.AckId}, int32(timeout))
+							return
+						}
+
+						if opts.AutoAck {
+							g.AckMessage(cctx, subName, []string{m.AckId})
+						}
+					}(m)
+
+					select {
+					case <-done:
+					case <-time.After(opts.Deadline):
+						logr.WithCtx(cctx).Debugf("Google Pubsub: worker timed out %v", subName)
+					}
+				}()
+			}
+
+			wg.Wait()
 		}
 	}()
+}
+
+func (g *GoogleCloud) AckMessage(ctx context.Context, sub string, ackIDs []string) error {
+	req := &pb.AcknowledgeRequest{
+		Subscription: sub,
+		AckIds:       ackIDs,
+	}
+
+	return g.grpcClient.Acknowledge(context.Background(), req)
+}
+
+func (g *GoogleCloud) ModAckMessage(ctx context.Context, sub string, ackIDs []string, deadline int32) error {
+	req := &pb.ModifyAckDeadlineRequest{
+		Subscription:       sub,
+		AckIds:             ackIDs,
+		AckDeadlineSeconds: deadline,
+	}
+
+	return g.grpcClient.ModifyAckDeadline(context.Background(), req)
 }
 
 func (g *GoogleCloud) getTopic(name string) (*pubsub.Topic, error) {
@@ -218,4 +268,49 @@ func (g *GoogleCloud) deleteTopic(name string) error {
 	}
 
 	return t.Delete(context.Background())
+}
+
+func (g *GoogleCloud) defaultConn(ctx context.Context) (*raw.SubscriberClient, error) {
+	g.init.Do(func() {
+		creds, err := defaultCredentials(ctx)
+		if err != nil {
+			g.grpcErr = err
+			return
+		}
+
+		conn, _, err := dial(ctx, creds.TokenSource)
+		if err != nil {
+			g.grpcErr = err
+			return
+		}
+
+		c, err := raw.NewSubscriberClient(ctx, option.WithGRPCConn(conn))
+		g.grpcClient = c
+		return
+
+	})
+
+	return g.grpcClient, g.grpcErr
+}
+
+func defaultCredentials(ctx context.Context) (*google.Credentials, error) {
+	adc, err := google.FindDefaultCredentials(ctx,
+		"https://www.googleapis.com/auth/cloud-platform")
+	if err != nil {
+		return nil, err
+	}
+	return adc, nil
+}
+
+func dial(ctx context.Context, ts oauth2.TokenSource) (*grpc.ClientConn, func(), error) {
+	conn, err := grpc.DialContext(ctx, endPoint,
+		grpc.WithTransportCredentials(credentials.NewClientTLSFromCert(nil, "")),
+		grpc.WithPerRPCCredentials(oauth.TokenSource{TokenSource: ts}),
+		grpc.WithUserAgent("lile-pubsub"),
+	)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	return conn, func() { conn.Close() }, nil
 }
