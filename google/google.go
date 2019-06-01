@@ -148,7 +148,12 @@ func (g *GoogleCloud) subscribe(opts ps.HandlerOptions, h ps.MsgHandler, ready c
 				MaxMessages:  int32(opts.Concurrency),
 			}
 
-			resp, err := g.grpcClient.Pull(context.Background(), req)
+			conn, err := g.defaultConn(context.Background())
+			if err != nil {
+				break
+			}
+
+			resp, err := conn.Pull(context.Background(), req)
 			if err != nil {
 				d := b.Duration()
 				logrus.Errorf(
@@ -221,7 +226,12 @@ func (g *GoogleCloud) AckMessage(ctx context.Context, sub string, ackIDs []strin
 		AckIds:       ackIDs,
 	}
 
-	return g.grpcClient.Acknowledge(context.Background(), req)
+	conn, err := g.defaultConn(context.Background())
+	if err != nil {
+		return err
+	}
+
+	return conn.Acknowledge(context.Background(), req)
 }
 
 func (g *GoogleCloud) ModAckMessage(ctx context.Context, sub string, ackIDs []string, deadline int32) error {
@@ -231,7 +241,12 @@ func (g *GoogleCloud) ModAckMessage(ctx context.Context, sub string, ackIDs []st
 		AckDeadlineSeconds: deadline,
 	}
 
-	return g.grpcClient.ModifyAckDeadline(context.Background(), req)
+	conn, err := g.defaultConn(context.Background())
+	if err != nil {
+		return err
+	}
+
+	return conn.ModifyAckDeadline(context.Background(), req)
 }
 
 func (g *GoogleCloud) getTopic(name string) (*pubsub.Topic, error) {
