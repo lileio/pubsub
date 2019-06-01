@@ -131,7 +131,7 @@ func (g *GoogleCloud) subscribe(opts ps.HandlerOptions, h ps.MsgHandler, ready c
 		ready <- true
 
 		b := &backoff.Backoff{
-			Min:    200 * time.Millisecond,
+			Min:    1 * time.Second,
 			Max:    600 * time.Second,
 			Factor: 2,
 			Jitter: true,
