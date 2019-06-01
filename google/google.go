@@ -144,7 +144,7 @@ func (g *GoogleCloud) subscribe(opts ps.HandlerOptions, h ps.MsgHandler, ready c
 			}
 
 			req := &pb.PullRequest{
-				Subscription: fmt.Sprintf("/projects/%s/subscriptions/%s", g.projectID, subName),
+				Subscription: fmt.Sprintf("projects/%s/subscriptions/%s", g.projectID, subName),
 				MaxMessages:  int32(opts.Concurrency),
 			}
 
@@ -163,6 +163,12 @@ func (g *GoogleCloud) subscribe(opts ps.HandlerOptions, h ps.MsgHandler, ready c
 				time.Sleep(d)
 				continue
 			}
+
+			logr.WithCtx(context.Background()).Debugf(
+				"Google Pubsub: pulled %d messages for %s",
+				len(resp.ReceivedMessages),
+				subName,
+			)
 
 			b.Reset()
 
