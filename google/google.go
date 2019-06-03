@@ -174,8 +174,8 @@ func (g *GoogleCloud) subscribe(opts ps.HandlerOptions, h ps.MsgHandler, ready c
 
 			var wg sync.WaitGroup
 			for _, m := range resp.ReceivedMessages {
-				go func() {
-					wg.Add(1)
+				wg.Add(1)
+				go func(m *pb.ReceivedMessage) {
 					defer wg.Done()
 					done := make(chan struct{})
 
@@ -218,7 +218,7 @@ func (g *GoogleCloud) subscribe(opts ps.HandlerOptions, h ps.MsgHandler, ready c
 					case <-time.After(opts.Deadline):
 						logr.WithCtx(cctx).Debugf("Google Pubsub: worker timed out %v", subName)
 					}
-				}()
+				}(m)
 			}
 
 			wg.Wait()
