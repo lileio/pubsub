@@ -7,7 +7,7 @@ import (
 	"github.com/dropbox/godropbox/errors"
 	"github.com/lileio/pubsub/v2"
 	opentracing "github.com/opentracing/opentracing-go"
-	zipkintracing "github.com/openzipkin/zipkin-go-opentracing"
+	zipkintracing "github.com/openzipkin-contrib/zipkin-go-opentracing"
 	"github.com/sirupsen/logrus"
 )
 
@@ -26,7 +26,7 @@ func (o Middleware) SubscribeInterceptor(opts pubsub.HandlerOptions, next pubsub
 		if span != nil {
 			zs, ok := span.Context().(zipkintracing.SpanContext)
 			if ok {
-				traceID = zs.TraceID.ToHex()
+				traceID = zs.TraceID.String()
 			}
 		}
 
