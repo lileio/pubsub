@@ -33,5 +33,8 @@ require (
 	golang.org/x/tools v0.0.0-20181015221341-5d4988d199e2 // indirect
 	google.golang.org/appengine v1.2.0 // indirect
 	google.golang.org/genproto v0.0.0-20181004005441-af9cb2a35e7f // indirect
+	google.golang.org/grpc v1.15.0
 	honnef.co/go/tools v0.0.0-20180920025451-e3ad64cb4ed3 // indirect
 )
+
+go 1.13
