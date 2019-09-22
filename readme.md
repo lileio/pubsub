@@ -10,11 +10,67 @@ PubSub also abstracts away the creation of the queues and their subscribers, so 
 
 ## Table of Contents
 
-- [Simple Example](#example)
-- [FAQ](#faq)
-- [Installation](#installation)
-- [Quick Start](#quick-start)
-- [Configuration](#configuration)
-- [Client Libraries](#client-libraries)
-- [Roadmap](#roadmap)
-- [Acknowledgements](#acknowledgements)
+- [Basic Example](#example)
+
+## Example
+
+Here's a basic example using [Nats streaming server](https://nats-io.github.io/docs/nats_streaming/intro.html) and a basic subscriber function that prints hello.
+
+``` go
+const HelloTopic = "hello.topic"
+
+type HelloMsg struct {
+	Greeting string
+	Name     string
+}
+
+type Subscriber struct{}
+
+func (s *Subscriber) Setup(c *pubsub.Client) {
+	c.On(pubsub.HandlerOptions{
+		Topic:   HelloTopic,
+		Name:    "print-hello",
+		Handler: s.printHello,
+		AutoAck: true,
+		JSON:    true,
+	})
+}
+
+func (s *Subscriber) printHello(ctx context.Context, msg *HelloMsg, m *pubsub.Msg) error {
+	fmt.Printf("Message received %+v\n\n", m)
+	fmt.Printf(msg.Greeting + " " + msg.Name + "\n")
+	return nil
+}
+
+func main() {
+	n, err := nats.NewNats("test-cluster")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	pubsub.SetClient(&pubsub.Client{
+		ServiceName: "my-new-service",
+		Provider:    n,
+		Middleware:  defaults.Middleware,
+	})
+
+	go func() {
+		pubsub.Subscribe(&Subscriber{})
+	}()
+
+	fmt.Println("Subscribing to queues..")
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	<-c
+	pubsub.Shutdown()
+}
+```
+
+You can test this by first running Nats with the following Docker command
+
+```
+docker run -v $(pwd)/data:/datastore -p 4222:4222 -p 8223:8223 nats-streaming -p 4222 -m 8223 -store file -dir /datastore
+```
+
+And then publishing a message

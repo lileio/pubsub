@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package pubsub;
+
+option go_package = "github.com/lileio/pubsub";
+
+import "google/protobuf/timestamp.proto";
+
+// Msg is a wrapper message that alllows us to keep metadata and other
+// different and useful information across all providers
+message MessageWrapper {
+  bytes data = 2;
+  map<string, string> metadata = 3;
+  google.protobuf.Timestamp publish_time = 4;
+}
