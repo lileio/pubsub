@@ -65,7 +65,7 @@ func (n *Nats) Publish(ctx context.Context, topic string, m *pubsub.Msg) error {
 	if err != nil {
 		logr.WithCtx(ctx).Error(errors.Wrap(err, "couldn't publish to nats"))
 	} else {
-		logr.WithCtx(ctx).Debugf("Nats: Published to %s as", topic, n.clientID)
+		logr.WithCtx(ctx).Debugf("Nats: Published to %s as %s", topic, n.clientID)
 	}
 
 	return err
