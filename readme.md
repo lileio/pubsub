@@ -1,5 +1,6 @@
 ![logo](./docs/logo.png)
 --
+![Actions Status](https://github.com/lileio/pubsub/workflows/Test/badge.svg) [![](https://godoc.org/github.com/lileio/pubsub?status.svg)](http://godoc.org/github.com/lileio/pubsub)
 
 PubSub provides a simple helper library for doing publish and subscribe style asynchronous tasks in Go, usually in a web or micro service. PubSub allows you to write publishers and subscribers, fully typed, and swap out providers (Google Cloud PubSub, AWS SQS etc) as required. 
 
