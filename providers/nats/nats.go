@@ -121,8 +121,9 @@ func (n *Nats) Subscribe(opts pubsub.HandlerOptions, h pubsub.MsgHandler) {
 		stan.StartWithLastReceived(),
 		stan.DurableName(queueName),
 		stan.AckWait(opts.Deadline),
+		stan.MaxInflight(opts.Concurrency),
 		stan.SetManualAckMode(),
-		stan.MaxInflight(opts.Concurrency))
+	)
 
 	n.topics[opts.Topic] = &sub
 
