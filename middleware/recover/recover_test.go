@@ -8,7 +8,7 @@ import (
 
 	"github.com/lileio/lile/test"
 	"github.com/lileio/pubsub"
-	"github.com/lileio/pubsub/memory"
+	"github.com/lileio/pubsub/providers/memory"
 	"github.com/stretchr/testify/assert"
 )
 

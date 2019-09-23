@@ -15,7 +15,6 @@ require (
 	github.com/lileio/logr v0.0.0-20180612103852-dc57c81cbed7
 	github.com/nats-io/nats-server/v2 v2.1.0 // indirect
 	github.com/nats-io/nats-streaming-server v0.16.2 // indirect
-	github.com/nats-io/nats.go v1.8.1
 	github.com/nats-io/stan.go v0.5.0
 	github.com/opentracing/opentracing-go v1.0.2
 	github.com/openzipkin/zipkin-go-opentracing v0.3.4
@@ -30,7 +29,7 @@ require (
 	go.uber.org/zap v1.9.1
 	golang.org/x/oauth2 v0.0.0-20181003184128-c57b0facaced // indirect
 	golang.org/x/sync v0.0.0-20190423024810-112230192c58
-	golang.org/x/sys v0.0.0-20190920190810-ef0ce1748380 // indirect
+	golang.org/x/sys v0.0.0-20190922100055-0a153f010e69 // indirect
 	google.golang.org/genproto v0.0.0-20181004005441-af9cb2a35e7f // indirect
 	google.golang.org/grpc v1.15.0
 )

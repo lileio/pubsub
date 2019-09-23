@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/lileio/pubsub"
-	"github.com/lileio/pubsub/memory"
+	"github.com/lileio/pubsub/providers/memory"
 	"github.com/lileio/pubsub/test"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/log"

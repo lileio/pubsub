@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/lileio/pubsub"
-	"github.com/lileio/pubsub/memory"
+	"github.com/lileio/pubsub/providers/memory"
 	"github.com/lileio/pubsub/test"
 	"github.com/stretchr/testify/assert"
 )

@@ -5,10 +5,9 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/lileio/fromenv"
 	"github.com/lileio/logr"
 	"github.com/lileio/pubsub"
-	"github.com/lileio/pubsub/memory"
+	"github.com/lileio/pubsub/providers/memory"
 	"github.com/lileio/pubsub/test"
 	"github.com/stretchr/testify/assert"
 )
@@ -34,7 +33,6 @@ func (ts *TestSubscriber) Setup(c *pubsub.Client) {
 }
 
 func TestDefaultMiddleware(t *testing.T) {
-	fromenv.Tracer("sync")
 	logr.SetLevelFromEnv()
 	m := &memory.MemoryProvider{ErrorHandler: func(err error) {}}
 	c := &pubsub.Client{
