@@ -12,18 +12,18 @@ PubSub also abstracts away the creation of the queues and their subscribers, so 
 ## Table of Contents
 
 - [Example](#example)
-  * [Publisher](##publisher)
-  * [Subscriber](##subscriber)
-  * [Full Example](##full example)
+  * [Publisher](#publisher)
+  * [Subscriber](#subscriber)
+  * [Full Example](#full-example)
 - [Middleware](#middleware)
-  * [Default](##default)
-  * [Opentracing](##opentracing)
-  * [Prometheus](##prometheus)
+  * [Default](#default)
+  * [Opentracing](#opentracing)
+  * [Prometheus](#prometheus)
 - [Providers](#providers)
-  * [Google PubSub](##google)
-  * [Nats Streaming](##nats)
-  * [AWS SQS/SNS](##sqs)
-  * [Kakfa](##kafka)
+  * [Google PubSub](#google)
+  * [Nats Streaming](#nats)
+  * [AWS SQS/SNS](#sqs)
+  * [Kakfa](#kafka)
 
 ## Example
 
@@ -83,6 +83,7 @@ pubsub.Subscribe(&Subscriber{})
 ### Full Example
 
 You can see a full example in the [example folder](https://github.com/lileio/pubsub/tree/master/example).
+
 --
 
 ## Middleware
