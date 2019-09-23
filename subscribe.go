@@ -45,6 +45,9 @@ type HandlerOptions struct {
 	AutoAck bool
 	// Decode JSON objects from pubsub instead of protobuf
 	JSON bool
+	// StartFromBeginning starts a new subscriber from
+	// the beginning of messages available, if supported
+	StartFromBeginning bool
 }
 
 // On takes HandlerOptions and subscribes to a topic, waiting for a protobuf message

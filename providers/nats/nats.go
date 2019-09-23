@@ -74,6 +74,19 @@ func (n *Nats) Publish(ctx context.Context, topic string, m *pubsub.Msg) error {
 // Subscribe implements Subscribe for Nats
 func (n *Nats) Subscribe(opts pubsub.HandlerOptions, h pubsub.MsgHandler) {
 	queueName := fmt.Sprintf("%s--%s", opts.ServiceName, opts.Name)
+
+	subOpts := []stan.SubscriptionOption{}
+	subOpts = append(subOpts, stan.DurableName(queueName))
+	subOpts = append(subOpts, stan.AckWait(opts.Deadline))
+	subOpts = append(subOpts, stan.MaxInflight(opts.Concurrency))
+	subOpts = append(subOpts, stan.SetManualAckMode())
+
+	if opts.StartFromBeginning {
+		subOpts = append(subOpts, stan.StartAtSequence(0))
+	} else {
+		subOpts = append(subOpts, stan.StartWithLastReceived())
+	}
+
 	sub, err := n.client.QueueSubscribe(opts.Topic, queueName, func(m *stan.Msg) {
 		var w pubsub.MessageWrapper
 		err := proto.Unmarshal(m.Data, &w)
@@ -117,13 +130,7 @@ func (n *Nats) Subscribe(opts pubsub.HandlerOptions, h pubsub.MsgHandler) {
 			m.Ack()
 		}
 
-	},
-		stan.StartWithLastReceived(),
-		stan.DurableName(queueName),
-		stan.AckWait(opts.Deadline),
-		stan.MaxInflight(opts.Concurrency),
-		stan.SetManualAckMode(),
-	)
+	}, subOpts...)
 
 	n.topics[opts.Topic] = &sub
 
