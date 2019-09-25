@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package pubsub;
 
-option go_package = "github.com/lileio/pubsub";
+option go_package = "github.com/lileio/pubsub/v2";
 
 import "google/protobuf/timestamp.proto";
 

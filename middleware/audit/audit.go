@@ -3,7 +3,7 @@ package audit
 import (
 	"context"
 
-	"github.com/lileio/pubsub"
+	"github.com/lileio/pubsub/v2"
 	"google.golang.org/grpc/metadata"
 )
 

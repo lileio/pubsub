@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/dropbox/godropbox/errors"
-	"github.com/lileio/pubsub"
+	"github.com/lileio/pubsub/v2"
 )
 
 // Middleware is middleware for recovering from panics

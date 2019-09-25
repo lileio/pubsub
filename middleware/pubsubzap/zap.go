@@ -4,7 +4,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/lileio/pubsub"
+	"github.com/lileio/pubsub/v2"
 	opentracing "github.com/opentracing/opentracing-go"
 	zipkintracing "github.com/openzipkin/zipkin-go-opentracing"
 	"go.uber.org/zap"

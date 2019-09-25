@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/lileio/pubsub"
+	"github.com/lileio/pubsub/v2"
 	"github.com/prometheus/client_golang/prometheus"
 )
 

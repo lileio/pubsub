@@ -10,7 +10,7 @@ import (
 	uuid "github.com/gofrs/uuid"
 	"github.com/golang/protobuf/proto"
 	"github.com/lileio/lile/test"
-	"github.com/lileio/pubsub"
+	"github.com/lileio/pubsub/v2"
 	"github.com/stretchr/testify/assert"
 )
 

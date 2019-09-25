@@ -3,7 +3,7 @@ package opentracing
 import (
 	"context"
 
-	"github.com/lileio/pubsub"
+	"github.com/lileio/pubsub/v2"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/ext"
 )

@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/dropbox/godropbox/errors"
-	"github.com/lileio/pubsub"
+	"github.com/lileio/pubsub/v2"
 	opentracing "github.com/opentracing/opentracing-go"
 	zipkintracing "github.com/openzipkin/zipkin-go-opentracing"
 	"github.com/sirupsen/logrus"

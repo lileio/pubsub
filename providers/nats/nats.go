@@ -9,7 +9,7 @@ import (
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/lileio/logr"
-	"github.com/lileio/pubsub"
+	"github.com/lileio/pubsub/v2"
 	stan "github.com/nats-io/stan.go"
 	"github.com/pkg/errors"
 	"github.com/segmentio/ksuid"

@@ -9,7 +9,7 @@ import (
 	"github.com/dropbox/godropbox/errors"
 	"github.com/jpillora/backoff"
 	"github.com/lileio/logr"
-	ps "github.com/lileio/pubsub"
+	ps "github.com/lileio/pubsub/v2"
 	"golang.org/x/sync/semaphore"
 
 	"github.com/sirupsen/logrus"

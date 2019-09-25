@@ -8,9 +8,9 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/lileio/pubsub"
-	"github.com/lileio/pubsub/middleware/defaults"
-	"github.com/lileio/pubsub/providers/nats"
+	"github.com/lileio/pubsub/v2"
+	"github.com/lileio/pubsub/v2/middleware/defaults"
+	"github.com/lileio/pubsub/v2/providers/nats"
 )
 
 const HelloTopic = "hello.topic"
