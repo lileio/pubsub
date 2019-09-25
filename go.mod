@@ -1,4 +1,4 @@
-module github.com/lileio/pubsub
+module github.com/lileio/pubsub/v2
 
 require (
 	cloud.google.com/go v0.30.0
