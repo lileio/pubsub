@@ -2,7 +2,6 @@ module github.com/lileio/pubsub/v2
 
 require (
 	cloud.google.com/go v0.34.0
-	github.com/Shopify/toxiproxy v2.1.4+incompatible // indirect
 	github.com/dropbox/godropbox v0.0.0-20180512210157-31879d3884b9
 	github.com/gofrs/uuid v3.1.0+incompatible
 	github.com/golang/protobuf v1.3.2
@@ -15,8 +14,8 @@ require (
 	github.com/nats-io/nats-server/v2 v2.1.0 // indirect
 	github.com/nats-io/nats-streaming-server v0.16.2 // indirect
 	github.com/nats-io/stan.go v0.5.0
-	github.com/opentracing/opentracing-go v1.0.2
-	github.com/openzipkin/zipkin-go-opentracing v0.3.4
+	github.com/opentracing/opentracing-go v1.1.0
+	github.com/openzipkin-contrib/zipkin-go-opentracing v0.4.3
 	github.com/pkg/errors v0.8.1
 	github.com/prometheus/client_golang v0.9.2
 	github.com/segmentio/kafka-go v0.1.0
@@ -32,7 +31,7 @@ require (
 	golang.org/x/sys v0.0.0-20190924154521-2837fb4f24fe // indirect
 	google.golang.org/api v0.0.0-20181016000437-c51f30376ab7 // indirect
 	google.golang.org/genproto v0.0.0-20181004005441-af9cb2a35e7f // indirect
-	google.golang.org/grpc v1.19.0
+	google.golang.org/grpc v1.22.1
 )
 
 go 1.13
