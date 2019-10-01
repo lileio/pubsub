@@ -2,6 +2,7 @@ package logrus
 
 import (
 	"context"
+	"runtime/debug"
 	"time"
 
 	"github.com/dropbox/godropbox/errors"
@@ -42,8 +43,10 @@ func (o Middleware) SubscribeInterceptor(opts pubsub.HandlerOptions, next pubsub
 			de, ok := err.(errors.DropboxError)
 			if ok {
 				fields["err"] = de.GetMessage()
+				fields["stack"] = de.GetStack()
 			} else {
 				fields["err"] = err
+				fields["stack"] = string(debug.Stack())
 			}
 		}
 
