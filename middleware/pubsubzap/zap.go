@@ -2,8 +2,10 @@ package pubsubzap
 
 import (
 	"context"
+	"runtime/debug"
 	"time"
 
+	"github.com/dropbox/godropbox/errors"
 	"github.com/lileio/pubsub/v2"
 	opentracing "github.com/opentracing/opentracing-go"
 	zipkintracing "github.com/openzipkin/zipkin-go-opentracing"
@@ -59,6 +61,17 @@ func (o Middleware) SubscribeInterceptor(opts pubsub.HandlerOptions, next pubsub
 
 		if traceID != "" {
 			fields = append(fields, zap.String("trace-id", traceID))
+		}
+
+		if err != nil {
+			de, ok := err.(errors.DropboxError)
+			if ok {
+				fields = append(fields, zap.String("err", de.GetMessage()))
+				fields = append(fields, zap.String("stack", de.GetStack()))
+			} else {
+				fields = append(fields, zap.String("err", err.Error()))
+				fields = append(fields, zap.String("stack", string(debug.Stack())))
+			}
 		}
 
 		o.Logger.Debug("Processed PubSub Msg",
