@@ -20,9 +20,9 @@ PubSub also abstracts away the creation of the queues and their subscribers, so 
   * [Opentracing](#opentracing)
   * [Prometheus](#prometheus)
 - [Providers](#providers)
-  * [Google PubSub](#google)
-  * [Nats Streaming](#nats)
-  * [AWS SQS/SNS](#sqs)
+  * [Google PubSub](#google-cloud-pubsub)
+  * [Nats Streaming](#nats-streaming-server)
+  * [AWS SQS/SNS](#aws-sqssns)
   * [Kakfa](#kafka)
 
 ## Example
