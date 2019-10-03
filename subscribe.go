@@ -16,14 +16,16 @@ var wait = make(chan bool)
 // Subscribe starts a run loop with a Subscriber that listens to topics and
 // waits for a syscall.SIGINT or syscall.SIGTERM
 func Subscribe(s Subscriber) {
-	s.Setup(client)
+	s.Setup(clients[0])
 	<-wait
 }
 
 func Shutdown() {
 	logrus.Infof("pubsub: Gracefully shutting down pubsub subscribers")
 	wait <- true
-	client.Provider.Shutdown()
+	for _, c := range clients {
+		c.Provider.Shutdown()
+	}
 }
 
 // HandlerOptions defines the options for a subscriber handler

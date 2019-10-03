@@ -9,6 +9,7 @@ require (
 	github.com/lileio/fromenv v0.0.0-20180720125005-e881ea03b503
 	github.com/lileio/lile v0.0.0-20181016094446-48bc7aaffacf
 	github.com/lileio/logr v0.0.0-20180612103852-dc57c81cbed7
+	github.com/lileio/pubsub v0.0.0-20180730130251-70c350806efc
 	github.com/nats-io/stan.go v0.5.0
 	github.com/opentracing/opentracing-go v1.0.2
 	github.com/openzipkin/zipkin-go-opentracing v0.3.4
