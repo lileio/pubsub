@@ -2,15 +2,20 @@ package google
 
 import (
 	"context"
+	fmt "fmt"
+	math "math"
 	"sync"
 	"time"
 
 	"cloud.google.com/go/pubsub"
+	pbs "cloud.google.com/go/pubsub/apiv1"
 	"github.com/dropbox/godropbox/errors"
+	"github.com/golang/protobuf/ptypes"
 	"github.com/jpillora/backoff"
 	"github.com/lileio/logr"
 	ps "github.com/lileio/pubsub/v2"
 	"golang.org/x/sync/semaphore"
+	pbpb "google.golang.org/genproto/googleapis/pubsub/v1"
 
 	"github.com/sirupsen/logrus"
 )
@@ -21,9 +26,14 @@ var (
 
 // GoogleCloud provides google cloud pubsub
 type GoogleCloud struct {
-	client   *pubsub.Client
-	topics   map[string]*pubsub.Topic
-	subs     map[string]context.CancelFunc
+	client    *pubsub.Client
+	subClient *pbs.SubscriberClient
+
+	projectID string
+
+	topics map[string]*pubsub.Topic
+	subs   map[string]context.CancelFunc
+
 	shutdown bool
 }
 
@@ -34,10 +44,17 @@ func NewGoogleCloud(projectID string) (*GoogleCloud, error) {
 		return nil, err
 	}
 
+	s, err := pbs.NewSubscriberClient(context.Background())
+	if err != nil {
+		return nil, err
+	}
+
 	return &GoogleCloud{
-		client: c,
-		topics: map[string]*pubsub.Topic{},
-		subs:   map[string]context.CancelFunc{},
+		projectID: projectID,
+		client:    c,
+		subClient: s,
+		topics:    map[string]*pubsub.Topic{},
+		subs:      map[string]context.CancelFunc{},
 	}, nil
 }
 
@@ -111,9 +128,16 @@ func (g *GoogleCloud) subscribe(opts ps.HandlerOptions, h ps.MsgHandler, ready c
 			if err != nil {
 				logrus.Panicf("Can't subscribe to topic: %s", err.Error())
 			}
+		} else {
+			_, err = sub.Update(context.Background(), pubsub.SubscriptionConfigToUpdate{
+				AckDeadline: opts.Deadline,
+			})
+			if err != nil {
+				logrus.Panicf("Can't update: %s", err.Error())
+			}
 		}
 
-		logrus.Infof("Subscribed to topic %s with name %s", opts.Topic, subName)
+		logrus.Infof("Subscribing to topic %s with name %s", opts.Topic, subName)
 		ready <- true
 
 		b := &backoff.Backoff{
@@ -124,59 +148,106 @@ func (g *GoogleCloud) subscribe(opts ps.HandlerOptions, h ps.MsgHandler, ready c
 			Jitter: true,
 		}
 
+		type WorkerMsg struct {
+			ackID string
+			m     *pbpb.PubsubMessage
+			ctx   context.Context
+		}
+
 		// create a semaphore, this is because Google PubSub will spam
 		// your service if you can't process a message
 		// and will also not handle
 		sem := semaphore.NewWeighted(int64(opts.Concurrency))
+		pool := make(chan *WorkerMsg)
 
-		// Listen to messages and call the MsgHandler
-		for {
-			if g.shutdown {
-				break
-			}
-
-			cctx, cancel := context.WithCancel(context.Background())
-			err = sub.Receive(cctx, func(ctx context.Context, m *pubsub.Message) {
+		go func() {
+			for w := range pool {
+				ctx, c := context.WithTimeout(w.ctx, opts.Deadline)
 				if serr := sem.Acquire(ctx, 1); serr != nil {
 					logrus.Errorf(
 						"pubsub: Failed to acquire worker semaphore: %v",
 						serr,
 					)
-					return
-				}
-				defer sem.Release(1)
-
-				b.Reset()
-				msg := ps.Msg{
-					ID:          m.ID,
-					Metadata:    m.Attributes,
-					Data:        m.Data,
-					PublishTime: &m.PublishTime,
-					Ack: func() {
-						m.Ack()
-					},
-					Nack: func() {
-						m.Nack()
-					},
+					c()
+					continue
 				}
 
-				err = h(ctx, msg)
-				if err != nil {
-					return
-				}
+				go func(w *WorkerMsg, c context.CancelFunc) {
+					defer sem.Release(1)
+					defer c()
 
-				if opts.AutoAck {
-					m.Ack()
-				}
-			})
+					m := w.m
 
+					pt, _ := ptypes.Timestamp(m.PublishTime)
+
+					msg := ps.Msg{
+						ID:          m.MessageId,
+						Metadata:    m.Attributes,
+						Data:        m.Data,
+						PublishTime: &pt,
+						Ack: func() {
+							req := &pbpb.AcknowledgeRequest{
+								Subscription: subName,
+								AckIds:       []string{w.ackID},
+							}
+
+							err := g.subClient.Acknowledge(ctx, req)
+							if err != nil {
+								logrus.Errorf(
+									"Failed to Ack %s on sub %v. Err: %v",
+									w.ackID, subName, err,
+								)
+							}
+						},
+						Nack: func() {},
+					}
+
+					err = h(ctx, msg)
+					if err != nil {
+						return
+					}
+
+					if opts.AutoAck {
+						msg.Ack()
+					}
+				}(w, c)
+
+			}
+		}()
+
+		// Listen to messages and call the MsgHandler
+		for {
+			if g.shutdown {
+				close(pool)
+				break
+			}
+
+			ctx, cancel := context.WithCancel(context.Background())
+
+			req := &pbpb.PullRequest{
+				Subscription: fmt.Sprintf("projects/%s/subscriptions/%s", g.projectID, subName),
+				MaxMessages:  int32(math.Floor(float64(opts.Concurrency) * 1.2)),
+			}
+
+			res, err := g.subClient.Pull(ctx, req)
 			if err != nil {
 				d := b.Duration()
 				logrus.Errorf(
-					"Subscription receive to topic %s failed, reconnecting in %v. Err: %v",
+					"Subscription pull from topic %s failed, retrying in %v. Err: %v",
 					opts.Topic, d, err,
 				)
 				time.Sleep(d)
+			}
+
+			if len(res.ReceivedMessages) == 0 {
+				time.Sleep(1 * time.Second)
+			}
+
+			for _, m := range res.ReceivedMessages {
+				pool <- &WorkerMsg{
+					m:   m.Message,
+					ctx: ctx,
+				}
 			}
 
 			g.subs[subName] = cancel
