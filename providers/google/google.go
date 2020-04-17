@@ -100,7 +100,6 @@ func (g *GoogleCloud) Shutdown() {
 		}(v)
 	}
 	wg.Wait()
-	return
 }
 
 func (g *GoogleCloud) subscribe(opts ps.HandlerOptions, h ps.MsgHandler, ready chan<- bool) {
@@ -124,7 +123,7 @@ func (g *GoogleCloud) subscribe(opts ps.HandlerOptions, h ps.MsgHandler, ready c
 				Topic:       t,
 				AckDeadline: opts.Deadline,
 			}
-			sub, err = g.client.CreateSubscription(context.Background(), subName, sc)
+			_, err = g.client.CreateSubscription(context.Background(), subName, sc)
 			if err != nil {
 				logrus.Panicf("Can't subscribe to topic: %s", err.Error())
 			}
