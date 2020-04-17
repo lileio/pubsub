@@ -186,7 +186,7 @@ func (g *GoogleCloud) subscribe(opts ps.HandlerOptions, h ps.MsgHandler, ready c
 						PublishTime: &pt,
 						Ack: func() {
 							req := &pbpb.AcknowledgeRequest{
-								Subscription: subName,
+								Subscription: "projects/" + opts.Topic + "/subscriptions/" + subName,
 								AckIds:       []string{w.ackID},
 							}
 
