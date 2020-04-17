@@ -237,10 +237,14 @@ func (g *GoogleCloud) subscribe(opts ps.HandlerOptions, h ps.MsgHandler, ready c
 					opts.Topic, d, err,
 				)
 				time.Sleep(d)
+				_ = cancel
+				continue
 			}
 
 			if len(res.ReceivedMessages) == 0 {
 				time.Sleep(1 * time.Second)
+				_ = cancel
+				continue
 			}
 
 			for _, m := range res.ReceivedMessages {
