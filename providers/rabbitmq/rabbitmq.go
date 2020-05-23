@@ -108,12 +108,12 @@ func (r *RabbitMQProvider) Subscribe(opts pubsub.HandlerOptions, handler pubsub.
 
 				// handle message
 				err := handler(dlCtx, returnMessage)
-				if err != nil {
+				if err != nil && opts.AutoAck {
 					returnMessage.Nack()
 					continue
 				}
 
-				if !opts.AutoAck {
+				if opts.AutoAck {
 					returnMessage.Ack()
 				}
 			}
