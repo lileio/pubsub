@@ -50,6 +50,8 @@ type HandlerOptions struct {
 	// StartFromBeginning starts a new subscriber from
 	// the beginning of messages available, if supported
 	StartFromBeginning bool
+	// Unique subscriber means that all subscribers will receive all messages
+	Unique bool
 }
 
 // On takes HandlerOptions and subscribes to a topic, waiting for a protobuf message

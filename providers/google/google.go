@@ -10,6 +10,7 @@ import (
 	"github.com/jpillora/backoff"
 	"github.com/lileio/logr"
 	ps "github.com/lileio/pubsub/v2"
+	"github.com/segmentio/ksuid"
 	"golang.org/x/sync/semaphore"
 
 	"github.com/sirupsen/logrus"
@@ -90,6 +91,10 @@ func (g *GoogleCloud) subscribe(opts ps.HandlerOptions, h ps.MsgHandler, ready c
 	go func() {
 		var err error
 		subName := opts.ServiceName + "." + opts.Name + "--" + opts.Topic
+		if opts.Unique {
+			subName = subName + "-uniq-" + ksuid.New().String()
+		}
+
 		sub := g.client.Subscription(subName)
 
 		t, err := g.getTopic(opts.Topic)
@@ -132,6 +137,16 @@ func (g *GoogleCloud) subscribe(opts ps.HandlerOptions, h ps.MsgHandler, ready c
 		// Listen to messages and call the MsgHandler
 		for {
 			if g.shutdown {
+				if opts.Unique {
+					err = sub.Delete(context.Background())
+					if err != nil {
+						logrus.Errorf(
+							"pubsub: Failed to delete unique queue %s: %v",
+							subName, err,
+						)
+					}
+
+				}
 				break
 			}
 
