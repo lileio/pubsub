@@ -1,12 +1,12 @@
 package defaults
 
 import (
-	"github.com/lileio/pubsub"
-	"github.com/lileio/pubsub/middleware/audit"
-	"github.com/lileio/pubsub/middleware/logrus"
-	"github.com/lileio/pubsub/middleware/opentracing"
-	"github.com/lileio/pubsub/middleware/prometheus"
-	"github.com/lileio/pubsub/middleware/recover"
+	"github.com/lileio/pubsub/v2"
+	"github.com/lileio/pubsub/v2/middleware/audit"
+	"github.com/lileio/pubsub/v2/middleware/logrus"
+	"github.com/lileio/pubsub/v2/middleware/opentracing"
+	"github.com/lileio/pubsub/v2/middleware/prometheus"
+	"github.com/lileio/pubsub/v2/middleware/recover"
 )
 
 // Middleware is a helper to import the default middleware for pubsub

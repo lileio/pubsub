@@ -3,6 +3,7 @@ package pubsub
 import (
 	"context"
 	"encoding/json"
+	"sync"
 
 	"github.com/golang/protobuf/proto"
 )
@@ -39,11 +40,23 @@ type PublishResult struct {
 // current (global) publisher as protobuf
 func Publish(ctx context.Context, topic string, msg proto.Message) *PublishResult {
 	pr := &PublishResult{Ready: make(chan struct{})}
-	go func() {
-		err := client.Publish(ctx, topic, msg, false)
-		pr.Err = err
-		close(pr.Ready)
-	}()
+	var wg sync.WaitGroup
+
+	for _, c := range clients {
+		publishWaitGroup.Add(1)
+		wg.Add(1)
+		go func(c *Client) {
+			defer publishWaitGroup.Done()
+			defer wg.Done()
+			err := c.Publish(ctx, topic, msg, false)
+			if err != nil {
+				pr.Err = err
+			}
+		}(c)
+	}
+
+	wg.Wait()
+	close(pr.Ready)
 	return pr
 }
 
@@ -51,12 +64,29 @@ func Publish(ctx context.Context, topic string, msg proto.Message) *PublishResul
 // current (global) publisher as JSON
 func PublishJSON(ctx context.Context, topic string, obj interface{}) *PublishResult {
 	pr := &PublishResult{Ready: make(chan struct{})}
-	go func() {
-		err := client.Publish(ctx, topic, obj, true)
-		pr.Err = err
-		close(pr.Ready)
-	}()
+	var wg sync.WaitGroup
+
+	for _, c := range clients {
+		publishWaitGroup.Add(1)
+		wg.Add(1)
+		go func(c *Client) {
+			defer publishWaitGroup.Done()
+			defer wg.Done()
+			err := c.Publish(ctx, topic, obj, true)
+			if err != nil {
+				pr.Err = err
+			}
+		}(c)
+	}
+
+	wg.Wait()
+	close(pr.Ready)
 	return pr
+}
+
+// WaitForAllPublishing waits for all in flight publisher messages to go, before returning
+func WaitForAllPublishing() {
+	publishWaitGroup.Wait()
 }
 
 func chainPublisherMiddleware(mw ...Middleware) func(serviceName string, next PublishHandler) PublishHandler {

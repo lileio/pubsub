@@ -4,11 +4,13 @@ package pubsub
 
 import (
 	"context"
+	"sync"
 	"time"
 )
 
 var (
-	client = &Client{Provider: NoopProvider{}}
+	clients          = []*Client{&Client{Provider: NoopProvider{}}}
+	publishWaitGroup sync.WaitGroup
 )
 
 // Client holds a reference to a Provider
@@ -20,7 +22,12 @@ type Client struct {
 
 // SetClient sets the global pubsub client, useful in tests
 func SetClient(cli *Client) {
-	client = cli
+	clients = []*Client{cli}
+}
+
+// AddPublisherClient allows another client to bet set, for publishing only
+func AddPublisherClient(cli *Client) {
+	clients = append(clients, cli)
 }
 
 // Provider is generic interface for a pub sub provider

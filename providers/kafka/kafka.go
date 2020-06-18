@@ -11,7 +11,7 @@ import (
 
 	"github.com/gofrs/uuid"
 	"github.com/jpillora/backoff"
-	"github.com/lileio/pubsub"
+	"github.com/lileio/pubsub/v2"
 	"github.com/segmentio/kafka-go"
 	"github.com/sirupsen/logrus"
 )

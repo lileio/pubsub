@@ -4,9 +4,9 @@ import (
 	"context"
 	"testing"
 
-	"github.com/lileio/pubsub"
-	"github.com/lileio/pubsub/memory"
-	"github.com/lileio/pubsub/test"
+	"github.com/lileio/pubsub/v2"
+	"github.com/lileio/pubsub/v2/providers/memory"
+	"github.com/lileio/pubsub/v2/test"
 	"github.com/stretchr/testify/assert"
 )
 

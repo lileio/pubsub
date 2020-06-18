@@ -4,12 +4,12 @@ import (
 	"context"
 	"testing"
 
-	"github.com/lileio/pubsub"
-	"github.com/lileio/pubsub/memory"
-	"github.com/lileio/pubsub/test"
+	"github.com/lileio/pubsub/v2"
+	"github.com/lileio/pubsub/v2/providers/memory"
+	"github.com/lileio/pubsub/v2/test"
 	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/opentracing/opentracing-go/log"
-	zipkintracer "github.com/openzipkin/zipkin-go-opentracing"
+	"github.com/opentracing/opentracing-go/mocktracer"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -33,12 +33,8 @@ func (ts *TestSubscriber) Setup(c *pubsub.Client) {
 }
 
 func TestOpentracingMiddleware(t *testing.T) {
-	recorder := zipkintracer.NewInMemoryRecorder()
-	tracer, err := zipkintracer.NewTracer(recorder)
+	tracer := mocktracer.New()
 	opentracing.SetGlobalTracer(tracer)
-	if err != nil {
-		t.Fatalf("Unable to create Tracer: %+v", err)
-	}
 
 	// A fake span from say, an RPC request
 	span := tracer.StartSpan("fake_span")
@@ -63,7 +59,7 @@ func TestOpentracingMiddleware(t *testing.T) {
 		Name: "pubsub",
 	}
 
-	err = c.Publish(ctx, "test_topic", &ps, false)
+	err := c.Publish(ctx, "test_topic", &ps, false)
 	assert.Nil(t, err)
 
 	ts := TestSubscriber{T: t}
