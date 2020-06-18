@@ -16,10 +16,6 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var (
-	mutex = &sync.Mutex{}
-)
-
 // Nats provides nats publish and subscribe
 type Nats struct {
 	client   stan.Conn
@@ -150,6 +146,7 @@ func (n *Nats) Shutdown() {
 	n.shutdown = true
 	var wg sync.WaitGroup
 	for k, v := range n.topics {
+		wg.Add(1)
 		logrus.Infof("Shutting down sub for %s", k)
 		go func(v *stan.Subscription) {
 			(*v).Close()
