@@ -261,6 +261,10 @@ func (g *GoogleCloud) subscribe(opts ps.HandlerOptions, h ps.MsgHandler, ready c
 			g.subs[subName] = cancel
 			mutex.Unlock()
 
+			if opts.Concurrency == 0 {
+				opts.Concurrency = 10
+			}
+
 			req := &pbpb.PullRequest{
 				Subscription: fmt.Sprintf("projects/%s/subscriptions/%s", g.projectID, subName),
 				MaxMessages:  int32(math.Floor(float64(opts.Concurrency) * 1.2)),
