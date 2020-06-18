@@ -38,6 +38,14 @@ func (o Middleware) SubscribeInterceptor(opts pubsub.HandlerOptions, next pubsub
 			"duration":  elapsed,
 			"metadata":  m.Metadata,
 		}
+    
+    if m.ID != "" {
+			fields["id"] = m.ID
+		}
+
+		if traceID != "" {
+			fields["trace-id"] = traceID
+		}
 
 		if err != nil {
 			de, ok := err.(errors.DropboxError)
@@ -48,17 +56,12 @@ func (o Middleware) SubscribeInterceptor(opts pubsub.HandlerOptions, next pubsub
 				fields["err"] = err
 				fields["stack"] = string(debug.Stack())
 			}
+      
+			logrus.WithFields(fields).Error("Failed Processing PubSub Msg")
+		} else {
+			logrus.WithFields(fields).Debug("Processed PubSub Msg")
 		}
-
-		if m.ID != "" {
-			fields["id"] = m.ID
-		}
-
-		if traceID != "" {
-			fields["trace-id"] = traceID
-		}
-
-		logrus.WithFields(fields).Debug("Processed PubSub Msg")
+    
 		return err
 	}
 }
