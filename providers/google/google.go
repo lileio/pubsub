@@ -163,7 +163,7 @@ func (g *GoogleCloud) subscribe(opts ps.HandlerOptions, h ps.MsgHandler, ready c
 			Jitter: true,
 		}
 
-		// We use a semaphore as another flow control mechanism, so clients can use
+		// We use a semaphore as another flow control mechanism, so clients can decide
 		// how many messages they want to process concurrently
 		sem := semaphore.NewWeighted(int64(opts.Concurrency))
 		workQueue := make(chan *workUnit)
