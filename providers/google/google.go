@@ -42,8 +42,11 @@ type GoogleCloud struct {
 
 // NewGoogleCloud creates a new GoogleCloud instace for a project
 func NewGoogleCloud(projectID string) (*GoogleCloud, error) {
-	// Try to use as many connections as possible
+	// Try to use as many connections as possible. Use the same maximum default as Google's library
 	numConns := runtime.GOMAXPROCS(0)
+	if numConns > 4 {
+		numConns = 4
+	}
 
 	c, err := pubsub.NewClient(context.Background(), projectID, option.WithGRPCConnectionPool(numConns))
 	if err != nil {
