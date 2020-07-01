@@ -325,3 +325,12 @@ func (g *GoogleCloud) getTopic(name string) (*pubsub.Topic, error) {
 
 	return t, nil
 }
+
+func (g *GoogleCloud) deleteTopic(name string) error {
+	t, err := g.getTopic(name)
+	if err != nil {
+		return err
+	}
+
+	return t.Delete(context.Background())
+}
