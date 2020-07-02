@@ -4,6 +4,7 @@ import (
 	"context"
 	fmt "fmt"
 	math "math"
+	"runtime"
 	"sync"
 	"time"
 
@@ -16,6 +17,7 @@ import (
 	ps "github.com/lileio/pubsub/v2"
 	"github.com/segmentio/ksuid"
 	"golang.org/x/sync/semaphore"
+	"google.golang.org/api/option"
 	pbpb "google.golang.org/genproto/googleapis/pubsub/v1"
 
 	"github.com/sirupsen/logrus"
@@ -40,12 +42,18 @@ type GoogleCloud struct {
 
 // NewGoogleCloud creates a new GoogleCloud instace for a project
 func NewGoogleCloud(projectID string) (*GoogleCloud, error) {
-	c, err := pubsub.NewClient(context.Background(), projectID)
+	// Try to use as many connections as possible. Use the same maximum default as Google's library
+	numConns := runtime.GOMAXPROCS(0)
+	if numConns > 4 {
+		numConns = 4
+	}
+
+	c, err := pubsub.NewClient(context.Background(), projectID, option.WithGRPCConnectionPool(numConns))
 	if err != nil {
 		return nil, err
 	}
 
-	s, err := pbs.NewSubscriberClient(context.Background())
+	s, err := pbs.NewSubscriberClient(context.Background(), option.WithGRPCConnectionPool(numConns))
 	if err != nil {
 		return nil, err
 	}
@@ -103,6 +111,12 @@ func (g *GoogleCloud) Shutdown() {
 	wg.Wait()
 }
 
+type workUnit struct {
+	ackID string
+	m     *pbpb.PubsubMessage
+	ctx   context.Context
+}
+
 func (g *GoogleCloud) subscribe(opts ps.HandlerOptions, h ps.MsgHandler, ready chan<- bool) {
 	go func() {
 		var err error
@@ -152,35 +166,14 @@ func (g *GoogleCloud) subscribe(opts ps.HandlerOptions, h ps.MsgHandler, ready c
 			Jitter: true,
 		}
 
-		type WorkerMsg struct {
-			ackID string
-			m     *pbpb.PubsubMessage
-			ctx   context.Context
-		}
-
-		// create a semaphore, this is because Google PubSub will spam
-		// your service if you can't process a message
-		// and will also not handle
+		// We use a semaphore as another flow control mechanism, so clients can decide
+		// how many messages they want to process concurrently
 		sem := semaphore.NewWeighted(int64(opts.Concurrency))
-		pool := make(chan *WorkerMsg)
+		workQueue := make(chan *workUnit)
 
 		// Listen to messages and call the MsgHandler
-		for {
-			if g.shutdown {
-				if opts.Unique {
-					err = sub.Delete(context.Background())
-					if err != nil {
-						logrus.Errorf(
-							"pubsub: Failed to delete unique queue %s: %v",
-							subName, err,
-						)
-					}
-
-				}
-				break
-			}
-
-			for w := range pool {
+		go func() {
+			for w := range workQueue {
 				ctx, c := context.WithTimeout(w.ctx, opts.Deadline)
 				if serr := sem.Acquire(ctx, 1); serr != nil {
 					logrus.Errorf(
@@ -191,7 +184,7 @@ func (g *GoogleCloud) subscribe(opts ps.HandlerOptions, h ps.MsgHandler, ready c
 					continue
 				}
 
-				go func(w *WorkerMsg, c context.CancelFunc) {
+				go func(w *workUnit, c context.CancelFunc) {
 					defer sem.Release(1)
 					defer c()
 
@@ -247,12 +240,22 @@ func (g *GoogleCloud) subscribe(opts ps.HandlerOptions, h ps.MsgHandler, ready c
 				}(w, c)
 
 			}
-		}
+		}()
 
-		// Listen to messages and call the MsgHandler
+		// Keep pulling messages from this subscription
 		for {
 			if g.shutdown {
-				close(pool)
+				if opts.Unique {
+					err = sub.Delete(context.Background())
+					if err != nil {
+						logrus.Errorf(
+							"pubsub: Failed to delete unique queue %s: %v",
+							subName, err,
+						)
+					}
+
+				}
+				close(workQueue)
 				break
 			}
 
@@ -289,7 +292,7 @@ func (g *GoogleCloud) subscribe(opts ps.HandlerOptions, h ps.MsgHandler, ready c
 			}
 
 			for _, m := range res.ReceivedMessages {
-				pool <- &WorkerMsg{
+				workQueue <- &workUnit{
 					m:     m.Message,
 					ackID: m.AckId,
 					ctx:   ctx,
