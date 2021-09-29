@@ -181,6 +181,8 @@ func getCloudRunUrl() (string, error) {
 		return "", fmt.Errorf("impossible to read the Cloud Run API call body with error %+v\n", err)
 	}
 
+	fmt.Printf("string(body = %+v\n", string(body))
+
 	// Map the JSON body in a minimal struct. We need only the URL, the struct match only this part in the JSON.
 	cloudRunResp := &CloudRunAPIUrlOnly{}
 	json.Unmarshal(body, cloudRunResp)
@@ -236,6 +238,8 @@ func (g *GoogleCloudRun) subscribe(opts ps.HandlerOptions, h ps.MsgHandler, read
 		q.Set(queryName, subName)
 		u.RawQuery = q.Encode()
 
+		logrus.Infof("Cloud service URL: %s", serviceURL)
+
 		sc := pubsub.SubscriptionConfig{
 			Topic:       t,
 			AckDeadline: opts.Deadline,
@@ -254,6 +258,8 @@ func (g *GoogleCloudRun) subscribe(opts ps.HandlerOptions, h ps.MsgHandler, read
 	}
 
 	g.subs[subName] = h
+
+	ready <- true
 }
 
 func (g *GoogleCloudRun) getTopic(name string) (*pubsub.Topic, error) {
