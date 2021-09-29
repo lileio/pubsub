@@ -1,21 +1,20 @@
 module github.com/lileio/pubsub/v2
 
+go 1.13
+
 require (
 	cloud.google.com/go v0.95.0
 	cloud.google.com/go/pubsub v1.17.0
-	github.com/apache/thrift v0.0.0-20181016064013-5c1ecb67cde4 // indirect
 	github.com/dropbox/godropbox v0.0.0-20180512210157-31879d3884b9
-	github.com/go-logfmt/logfmt v0.3.0 // indirect
 	github.com/gofrs/uuid v3.1.0+incompatible
 	github.com/golang/protobuf v1.5.2
 	github.com/jpillora/backoff v0.0.0-20180909062703-3050d21c67d7
-	github.com/kr/logfmt v0.0.0-20140226030751-b84e30acd515 // indirect
 	github.com/lileio/logr v1.1.0
-	github.com/nats-io/nats-server/v2 v2.1.0 // indirect
-	github.com/nats-io/nats-streaming-server v0.16.2 // indirect
-	github.com/nats-io/stan.go v0.5.0
+	github.com/nats-io/nats-server/v2 v2.6.1 // indirect
+	github.com/nats-io/nats-streaming-server v0.22.1 // indirect
+	github.com/nats-io/stan.go v0.10.0
 	github.com/opentracing/opentracing-go v1.1.0
-	github.com/openzipkin/zipkin-go-opentracing v0.3.4
+	github.com/openzipkin-contrib/zipkin-go-opentracing v0.4.3
 	github.com/pierrec/lz4 v2.0.5+incompatible // indirect
 	github.com/pkg/errors v0.8.1
 	github.com/prometheus/client_golang v0.9.2
@@ -28,7 +27,7 @@ require (
 	go.uber.org/zap v1.9.1
 	golang.org/x/oauth2 v0.0.0-20210819190943-2bc19b11175f
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
+	google.golang.org/api v0.57.0
+	google.golang.org/genproto v0.0.0-20210921142501-181ce0d877f6
 	google.golang.org/grpc v1.40.0
 )
-
-go 1.13

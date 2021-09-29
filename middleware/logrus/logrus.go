@@ -8,7 +8,7 @@ import (
 	"github.com/dropbox/godropbox/errors"
 	"github.com/lileio/pubsub/v2"
 	opentracing "github.com/opentracing/opentracing-go"
-	zipkintracing "github.com/openzipkin/zipkin-go-opentracing"
+	zipkintracing "github.com/openzipkin-contrib/zipkin-go-opentracing"
 	"github.com/sirupsen/logrus"
 )
 
@@ -27,7 +27,7 @@ func (o Middleware) SubscribeInterceptor(opts pubsub.HandlerOptions, next pubsub
 		if span != nil {
 			zs, ok := span.Context().(zipkintracing.SpanContext)
 			if ok {
-				traceID = zs.TraceID.ToHex()
+				traceID = zs.TraceID.String()
 			}
 		}
 
@@ -37,6 +37,14 @@ func (o Middleware) SubscribeInterceptor(opts pubsub.HandlerOptions, next pubsub
 			"handler":   opts.Name,
 			"duration":  elapsed,
 			"metadata":  m.Metadata,
+		}
+    
+    if m.ID != "" {
+			fields["id"] = m.ID
+		}
+
+		if traceID != "" {
+			fields["trace-id"] = traceID
 		}
 
 		if err != nil {
@@ -48,17 +56,12 @@ func (o Middleware) SubscribeInterceptor(opts pubsub.HandlerOptions, next pubsub
 				fields["err"] = err
 				fields["stack"] = string(debug.Stack())
 			}
+      
+			logrus.WithFields(fields).Error("Failed Processing PubSub Msg")
+		} else {
+			logrus.WithFields(fields).Debug("Processed PubSub Msg")
 		}
-
-		if m.ID != "" {
-			fields["id"] = m.ID
-		}
-
-		if traceID != "" {
-			fields["trace-id"] = traceID
-		}
-
-		logrus.WithFields(fields).Debug("Processed PubSub Msg")
+    
 		return err
 	}
 }
