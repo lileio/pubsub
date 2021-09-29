@@ -25,6 +25,11 @@ func SetClient(cli *Client) {
 	clients = []*Client{cli}
 }
 
+// GetClient get the global pubsub client, useful in tests
+func GetClient() *Client {
+	return clients[0]
+}
+
 // AddPublisherClient allows another client to bet set, for publishing only
 func AddPublisherClient(cli *Client) {
 	clients = append(clients, cli)
