@@ -61,7 +61,7 @@ func NewGoogleCloudRun(projectID string) (*GoogleCloudRun, error) {
 	}, nil
 }
 
-func (g *GoogleCloudRun) RegisterHandler(m http.ServeMux) {
+func (g *GoogleCloudRun) RegisterHandler(m *http.ServeMux) {
 	m.HandleFunc(httpPath, func(w http.ResponseWriter, r *http.Request) {
 		var m PushRequest
 		if err := json.NewDecoder(r.Body).Decode(&m); err != nil {
