@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/golang/protobuf/proto"
+	"golang.org/x/sync/errgroup"
 )
 
 // Publish published on the client
@@ -40,23 +41,27 @@ type PublishResult struct {
 // current (global) publisher as protobuf
 func Publish(ctx context.Context, topic string, msg proto.Message) *PublishResult {
 	pr := &PublishResult{Ready: make(chan struct{})}
-	var wg sync.WaitGroup
 
-	for _, c := range clients {
-		publishWaitGroup.Add(1)
-		wg.Add(1)
-		go func(c *Client) {
-			defer publishWaitGroup.Done()
-			defer wg.Done()
-			err := c.Publish(ctx, topic, msg, false)
-			if err != nil {
-				pr.Err = err
-			}
-		}(c)
-	}
+	go func() {
+		var eg errgroup.Group
 
-	wg.Wait()
-	close(pr.Ready)
+		for _, c := range clients {
+			cl := c
+			publishWaitGroup.Add(1)
+			eg.Go(func() error {
+				defer publishWaitGroup.Done()
+				return cl.Publish(ctx, topic, msg, false)
+			})
+		}
+
+		err := eg.Wait()
+		if err != nil {
+			pr.Err = err
+		}
+
+		close(pr.Ready)
+	}()
+
 	return pr
 }
 
