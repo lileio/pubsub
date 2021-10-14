@@ -249,6 +249,14 @@ func (g *GoogleCloudRun) subscribe(opts ps.HandlerOptions, h ps.MsgHandler, read
 					ServiceAccountEmail: os.Getenv("PUBSUB_SERVICE_ACCOUNT_EMAIL"),
 				},
 			},
+			DeadLetterPolicy: &pubsub.DeadLetterPolicy{
+				MaxDeliveryAttempts: 10,
+				DeadLetterTopic:     t.String() + "-dead",
+			},
+			RetryPolicy: &pubsub.RetryPolicy{
+				MinimumBackoff: 30 * time.Second,
+				MaximumBackoff: 10 * time.Minute,
+			},
 		}
 
 		sub, err = g.client.CreateSubscription(context.Background(), subName, sc)
@@ -283,6 +291,8 @@ func (g *GoogleCloudRun) getTopic(name string) (*pubsub.Topic, error) {
 			return nil, err
 		}
 	}
+
+	t.PublishSettings.CountThreshold = 1
 
 	g.topics[name] = t
 
