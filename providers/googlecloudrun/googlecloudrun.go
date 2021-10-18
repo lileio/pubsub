@@ -181,8 +181,6 @@ func getCloudRunUrl() (string, error) {
 		return "", fmt.Errorf("impossible to read the Cloud Run API call body with error %+v\n", err)
 	}
 
-	fmt.Printf("string(body = %+v\n", string(body))
-
 	// Map the JSON body in a minimal struct. We need only the URL, the struct match only this part in the JSON.
 	cloudRunResp := &CloudRunAPIUrlOnly{}
 	json.Unmarshal(body, cloudRunResp)
@@ -287,6 +285,12 @@ func (g *GoogleCloudRun) getTopic(name string) (*pubsub.Topic, error) {
 
 	if !ok {
 		t, err = g.client.CreateTopic(context.Background(), name)
+		if err != nil {
+			return nil, err
+		}
+
+		// Also create a dead letter topic
+		_, err = g.client.CreateTopic(context.Background(), name+"-dead")
 		if err != nil {
 			return nil, err
 		}
