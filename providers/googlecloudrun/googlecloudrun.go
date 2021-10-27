@@ -105,13 +105,13 @@ func (g *GoogleCloudRun) RegisterHandler(m *http.ServeMux) {
 
 // Publish implements Publish
 func (g *GoogleCloudRun) Publish(ctx context.Context, topic string, m *ps.Msg) error {
-	t, err := g.getTopic(topic)
+	t, err := g.getTopic(ctx, topic)
 	if err != nil {
 		return err
 	}
 
 	logr.WithCtx(ctx).Debug("Google Pubsub: Publishing")
-	res := t.Publish(context.Background(), &pubsub.Message{
+	res := t.Publish(ctx, &pubsub.Message{
 		Data:       m.Data,
 		Attributes: m.Metadata,
 	})
@@ -205,7 +205,7 @@ func (g *GoogleCloudRun) subscribe(opts ps.HandlerOptions, h ps.MsgHandler, read
 	subName := opts.ServiceName + "-" + opts.Name + "--" + opts.Topic
 	sub := g.client.Subscription(subName)
 
-	t, err := g.getTopic(opts.Topic)
+	t, err := g.getTopic(context.Background(), opts.Topic)
 	if err != nil {
 		logrus.Panicf("Can't fetch topic: %s", err.Error())
 	}
@@ -268,7 +268,7 @@ func (g *GoogleCloudRun) subscribe(opts ps.HandlerOptions, h ps.MsgHandler, read
 	ready <- true
 }
 
-func (g *GoogleCloudRun) getTopic(name string) (*pubsub.Topic, error) {
+func (g *GoogleCloudRun) getTopic(ctx context.Context, name string) (*pubsub.Topic, error) {
 	mutex.Lock()
 	defer mutex.Unlock()
 
@@ -278,19 +278,19 @@ func (g *GoogleCloudRun) getTopic(name string) (*pubsub.Topic, error) {
 
 	var err error
 	t := g.client.Topic(name)
-	ok, err := t.Exists(context.Background())
+	ok, err := t.Exists(ctx)
 	if err != nil {
 		return nil, err
 	}
 
 	if !ok {
-		t, err = g.client.CreateTopic(context.Background(), name)
+		t, err = g.client.CreateTopic(ctx, name)
 		if err != nil {
 			return nil, err
 		}
 
 		// Also create a dead letter topic
-		_, err = g.client.CreateTopic(context.Background(), name+"-dead")
+		_, err = g.client.CreateTopic(ctx, name+"-dead")
 		if err != nil {
 			return nil, err
 		}
@@ -304,7 +304,7 @@ func (g *GoogleCloudRun) getTopic(name string) (*pubsub.Topic, error) {
 }
 
 func (g *GoogleCloudRun) deleteTopic(name string) error {
-	t, err := g.getTopic(name)
+	t, err := g.getTopic(context.Background(), name)
 	if err != nil {
 		return err
 	}
