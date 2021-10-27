@@ -90,8 +90,7 @@ func (g *GoogleCloudRun) RegisterHandler(m *http.ServeMux) {
 			},
 		}
 
-		ctx := context.Background()
-		err := h(ctx, msg)
+		err := h(r.Context(), msg)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Error processing message: %v", err), http.StatusBadRequest)
 			return
@@ -137,7 +136,6 @@ func (g *GoogleCloudRun) Subscribe(opts ps.HandlerOptions, h ps.MsgHandler) {
 func (g *GoogleCloudRun) Shutdown() {
 	// We rely on the http server to do a graceful shutdown
 	g.shutdown = true
-	return
 }
 
 type CloudRunAPIUrlOnly struct {
