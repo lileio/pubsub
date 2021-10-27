@@ -111,7 +111,9 @@ func (g *GoogleCloudRun) Publish(ctx context.Context, topic string, m *ps.Msg) e
 	}
 
 	logr.WithCtx(ctx).Debug("Google Pubsub: Publishing")
-	res := t.Publish(ctx, &pubsub.Message{
+	// We don't use the given context here, as it may be after the fact and can be cancelled
+	// this also usually happens async
+	res := t.Publish(context.Background(), &pubsub.Message{
 		Data:       m.Data,
 		Attributes: m.Metadata,
 	})
