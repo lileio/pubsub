@@ -104,7 +104,7 @@ func (g *GoogleCloudRun) RegisterHandler(m *http.ServeMux) {
 
 // Publish implements Publish
 func (g *GoogleCloudRun) Publish(ctx context.Context, topic string, m *ps.Msg) error {
-	t, err := g.getTopic(ctx, topic)
+	t, err := g.getTopic(context.Background(), topic)
 	if err != nil {
 		return err
 	}
