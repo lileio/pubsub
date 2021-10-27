@@ -5,7 +5,7 @@ import (
 
 	"github.com/lileio/pubsub/v2"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/label"
+	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/propagation"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -26,7 +26,7 @@ func (m MetadataCarrier) Set(key, value string) {
 
 func (m MetadataCarrier) Keys() []string {
 	keys := []string{}
-	for k, _ := range m {
+	for k := range m {
 		keys = append(keys, k)
 	}
 
@@ -81,7 +81,7 @@ func (o Middleware) PublisherMsgInterceptor(serviceName string, next pubsub.Publ
 
 		var span trace.Span
 		ctx, span = otel.Tracer(name).Start(ctx, "publish")
-		span.SetAttributes(label.String("topic", topic))
+		span.SetAttributes(attribute.String("topic", topic))
 
 		defer func() { span.End() }()
 		err := next(ctx, topic, m)
