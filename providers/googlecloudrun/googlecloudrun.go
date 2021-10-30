@@ -296,7 +296,7 @@ func (g *GoogleCloudRun) getTopic(ctx context.Context, name string) (*pubsub.Top
 		}
 	}
 
-	t.PublishSettings.CountThreshold = 1
+	t.PublishSettings.DelayThreshold = 200 * time.Millisecond
 
 	g.topics[name] = t
 
