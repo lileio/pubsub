@@ -33,7 +33,7 @@ func (o Middleware) PublisherMsgInterceptor(serviceName string, next pubsub.Publ
 	return func(ctx context.Context, topic string, m *pubsub.Msg) (err error) {
 		defer func() {
 			if r := recover(); r != nil {
-				err = recoverFrom(r, "pubsub: publish error", o.RecoveryHandlerFunc)
+				err = recoverFrom(r, "pubsub: publisher panic \n", o.RecoveryHandlerFunc)
 			}
 		}()
 		err = next(ctx, topic, m)
@@ -43,8 +43,16 @@ func (o Middleware) PublisherMsgInterceptor(serviceName string, next pubsub.Publ
 
 func recoverFrom(p interface{}, wrap string, r RecoveryHandlerFunc) error {
 	if r == nil {
-		return errors.Wrap(p.(error), wrap)
+		var e error
+		switch val := p.(type) {
+		case string:
+			e = errors.New(val)
+		case error:
+			e = val
+		default:
+			e = errors.New("unknown error occurred")
+		}
+		return errors.Wrap(e, wrap)
 	}
-
 	return r(p)
 }

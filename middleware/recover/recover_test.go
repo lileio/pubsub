@@ -17,17 +17,40 @@ type TestSubscriber struct {
 	T    *testing.T
 }
 
-func (ts *TestSubscriber) DoSomething(ctx context.Context, t *test.Account, msg *pubsub.Msg) error {
+func (ts *TestSubscriber) PanicWithError(ctx context.Context, t *test.Account, msg *pubsub.Msg) error {
 	assert.True(ts.T, len(msg.Data) > 0)
-	panic(errors.New("ahhhhhhhh"))
-	return nil
+	panic(errors.New("this is an error"))
+}
+
+func (ts *TestSubscriber) PanicWithString(ctx context.Context, t *test.Account, msg *pubsub.Msg) error {
+	assert.True(ts.T, len(msg.Data) > 0)
+	panic("this is a panic")
+}
+
+func (ts *TestSubscriber) PanicUnknown(ctx context.Context, t *test.Account, msg *pubsub.Msg) error {
+	assert.True(ts.T, len(msg.Data) > 0)
+	panic(struct{}{})
 }
 
 func (ts *TestSubscriber) Setup(c *pubsub.Client) {
 	c.On(pubsub.HandlerOptions{
-		Topic:   "test_topic",
-		Name:    "do_something",
-		Handler: ts.DoSomething,
+		Topic:   "with_error",
+		Name:    "test",
+		Handler: ts.PanicWithError,
+		JSON:    ts.JSON,
+	})
+
+	c.On(pubsub.HandlerOptions{
+		Topic:   "with_string",
+		Name:    "test",
+		Handler: ts.PanicWithString,
+		JSON:    ts.JSON,
+	})
+
+	c.On(pubsub.HandlerOptions{
+		Topic:   "with_unknown",
+		Name:    "test",
+		Handler: ts.PanicUnknown,
 		JSON:    ts.JSON,
 	})
 }
@@ -51,7 +74,13 @@ func TestRecoverMiddleware(t *testing.T) {
 		Name: "smth",
 	}
 
-	err := c.Publish(context.Background(), "test_topic", &ps, false)
+	err := c.Publish(context.Background(), "with_error", &ps, false)
+	assert.Nil(t, err)
+
+	err = c.Publish(context.Background(), "with_string", &ps, false)
+	assert.Nil(t, err)
+
+	err = c.Publish(context.Background(), "with_unknown", &ps, false)
 	assert.Nil(t, err)
 
 	ts := TestSubscriber{T: t}
