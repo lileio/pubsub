@@ -9,9 +9,7 @@ import (
 
 type MemoryProvider struct {
 	Msgs            *sync.Map
-//		map[string]chan *pubsub.Msg
 	Subscribers     *sync.Map
-//map[string][]pubsub.MsgHandler
 	Errors          chan error
 }
 
