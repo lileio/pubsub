@@ -8,9 +8,9 @@ import (
 )
 
 type MemoryProvider struct {
-	Msgs            *sync.Map
-	Subscribers     *sync.Map
-	Errors          chan error
+	Msgs        *sync.Map
+	Subscribers *sync.Map
+	Errors      chan error
 }
 
 func NewMemoryProvider() *MemoryProvider {
@@ -61,7 +61,7 @@ func (mp *MemoryProvider) process(topic string) {
 	c, _ := mp.Msgs.Load(topic)
 	for msg := range c.(chan *pubsub.Msg) {
 		s, _ := mp.Subscribers.Load(topic)
-		for _, handler := range s.([]pubsub.MsgHandler){
+		for _, handler := range s.([]pubsub.MsgHandler) {
 			err = handler(context.Background(), *msg)
 			if err != nil {
 				mp.Errors <- err
@@ -71,8 +71,8 @@ func (mp *MemoryProvider) process(topic string) {
 }
 
 func (mp *MemoryProvider) Shutdown() {
-	
-	mp.Msgs.Range(func (k, v interface{}) bool {
+
+	mp.Msgs.Range(func(k, v interface{}) bool {
 		close(v.(chan *pubsub.Msg))
 		return true
 	})
