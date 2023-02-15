@@ -8,7 +8,7 @@ require (
 	github.com/dropbox/godropbox v0.0.0-20180512210157-31879d3884b9
 	github.com/gofrs/uuid v3.1.0+incompatible
 	github.com/golang/protobuf v1.5.2
-	github.com/jpillora/backoff v0.0.0-20180909062703-3050d21c67d7
+	github.com/jpillora/backoff v1.0.0
 	github.com/lileio/logr v1.1.0
 	github.com/nats-io/nats-server/v2 v2.6.1 // indirect
 	github.com/nats-io/nats-streaming-server v0.22.1 // indirect
@@ -16,14 +16,13 @@ require (
 	github.com/opentracing/opentracing-go v1.1.0
 	github.com/openzipkin-contrib/zipkin-go-opentracing v0.4.3
 	github.com/pierrec/lz4 v2.0.5+incompatible // indirect
-	github.com/pkg/errors v0.8.1
-	github.com/prometheus/client_golang v0.9.2
+	github.com/pkg/errors v0.9.1
+	github.com/prometheus/client_golang v1.11.1
 	github.com/segmentio/kafka-go v0.1.0
 	github.com/segmentio/ksuid v1.0.2
-	github.com/sirupsen/logrus v1.4.2
+	github.com/sirupsen/logrus v1.6.0
 	github.com/stretchr/testify v1.7.0
 	go.opentelemetry.io/otel v1.0.1
-	go.opentelemetry.io/otel/sdk v1.0.1
 	go.opentelemetry.io/otel/trace v1.0.1
 	go.uber.org/atomic v1.4.0 // indirect
 	go.uber.org/multierr v1.1.0 // indirect
