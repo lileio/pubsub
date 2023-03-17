@@ -34,7 +34,15 @@ func (c *Client) Publish(ctx context.Context, topic string, msg interface{}, isJ
 // A PublishResult holds the result from a call to Publish.
 type PublishResult struct {
 	Ready chan struct{}
-	Err   error
+	// Err could be nil if not waiting for `Ready` chan to close. Instead use `.Error()` method.
+	Err error
+}
+
+// Error waits for publish results to come back and return the error if any.
+func (p *PublishResult) Error() error {
+	<-p.Ready
+
+	return p.Err
 }
 
 // Publish is a convenience message which publishes to the
