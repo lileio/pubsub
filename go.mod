@@ -10,7 +10,7 @@ require (
 	github.com/golang/protobuf v1.5.2
 	github.com/jpillora/backoff v0.0.0-20180909062703-3050d21c67d7
 	github.com/lileio/logr v1.1.0
-	github.com/nats-io/nats-server/v2 v2.6.1 // indirect
+	github.com/nats-io/nats-server/v2 v2.7.4 // indirect
 	github.com/nats-io/nats-streaming-server v0.22.1 // indirect
 	github.com/nats-io/stan.go v0.10.0
 	github.com/opentracing/opentracing-go v1.1.0
@@ -23,7 +23,6 @@ require (
 	github.com/sirupsen/logrus v1.4.2
 	github.com/stretchr/testify v1.7.0
 	go.opentelemetry.io/otel v1.0.1
-	go.opentelemetry.io/otel/sdk v1.0.1
 	go.opentelemetry.io/otel/trace v1.0.1
 	go.uber.org/atomic v1.4.0 // indirect
 	go.uber.org/multierr v1.1.0 // indirect
