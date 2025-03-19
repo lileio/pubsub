@@ -205,6 +205,8 @@ func (g *GoogleCloudRun) subscribe(opts ps.HandlerOptions, h ps.MsgHandler, read
 	subName := opts.ServiceName + "-" + opts.Name + "--" + opts.Topic
 	sub := g.client.Subscription(subName)
 
+	logrus.Infof("Subscribing to topic %s with subscription %s", opts.Topic, subName)
+
 	t, err := g.getTopic(context.Background(), opts.Topic)
 	if err != nil {
 		logrus.Panicf("Can't fetch topic: %s", err.Error())
@@ -261,6 +263,8 @@ func (g *GoogleCloudRun) subscribe(opts ps.HandlerOptions, h ps.MsgHandler, read
 		if err != nil {
 			logrus.Panicf("Can't subscribe to topic: %s", err.Error())
 		}
+
+		logrus.Infof("Subscribed to topic %s with subscription %s", t.String(), sub.String())
 	}
 
 	g.subs[subName] = h
